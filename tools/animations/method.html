@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GTP method</title>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,wght@0,400;0,500;0,700;1,400&display=block" rel="stylesheet">
+<style>
+  :root { --navy: #102033; --ink: #263548; --muted: #5b6777; --line: #d7ddd9; --paper: #faf9f4; --gtp: #5DBDF3; --gtp-deep: #1f8fd0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--paper); }
+  body { font-family: "Google Sans", Arial, sans-serif; color: var(--navy); }
+  #stage {
+    position: relative; width: 1920px; height: 900px; overflow: hidden;
+    background: radial-gradient(ellipse 120% 90% at 50% 0%, #ffffff 0%, var(--paper) 60%, #f2f0e8 100%);
+  }
+  .abs { position: absolute; }
+  svg text { font-family: "Google Sans", Arial, sans-serif; }
+  #kicker { left: 0; right: 0; top: 34px; text-align: center; font-size: 24px; font-weight: 700; letter-spacing: 0.14em; color: var(--gtp-deep); }
+  .narr { left: 0; right: 0; top: 72px; text-align: center; font-size: 40px; font-weight: 700; color: var(--navy); }
+  .narr .num {
+    display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%;
+    background: #1b3688; color: #fff; font-size: 27px; margin-right: 16px; vertical-align: 4px;
+  }
+  /* text=plot: the caption sits inside the plot card, above the tree. */
+  .narr.in-plot { left: 646px; right: auto; top: 280px; width: 1030px; text-align: left; font-size: 25px; }
+  .narr.in-plot .num { display: none; }  /* the highlighted chip above already shows the step */
+  .card {
+    position: absolute; background: #fff; border: 1px solid var(--line); border-radius: 24px;
+    box-shadow: 0 10px 30px rgba(16, 32, 51, 0.07);
+  }
+  .schema { background: #fff; border: 5px solid #1b3688; border-radius: 30px; box-shadow: 0 10px 30px rgba(27, 54, 136, 0.10); }
+  .principle { padding: 22px 30px; }
+  .principle h3 { margin: 0 0 10px; font-size: 30px; display: flex; align-items: center; gap: 14px; }
+  .principle h3 i { width: 14px; height: 14px; border-radius: 50%; background: #1b3688; display: inline-block; }
+  .principle p { margin: 0; font-size: 23px; line-height: 1.4; color: var(--ink); white-space: nowrap; }
+  .serif { font-family: "Times New Roman", Times, serif; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="lib.js"></script>
+<script>
+(function () {
+  'use strict';
+  var C = A.COLORS, prog = A.prog, eo = A.easeOut, eio = A.easeInOut, html = A.html, svg = A.svg, lerp = A.lerp;
+  var BLUE = '#1b3688', FILL = '#ecf4ff', HL = '#2f6fe0', PRUNED = '#cfd4dc', TEAL = '#087f7a';
+  var stage = document.getElementById('stage');
+
+  // ------------------------------------------------------------------ planning problem (precomputed)
+  // A sequence is a path through states s_t .. s_t+H (nodes 0..H); action a_t+i is the edge from
+  // node i to node i+1. Node 0 is the current state, shared by every sequence.
+  // The default is the version used on the site: 3 actions, the best sequence picked and its first
+  // action executed in one step, captions inside the plot. Options, e.g. method.html?H=4&combine=0:
+  //   H=4        plan over 4 actions (one iteration per action)
+  //   combine=0  pick the best sequence, then mark its first action executed in a separate step
+  //   speed=1    the original pace (the default plays 1.4x faster, the narrated first iteration 1.05x)
+  //   text=top   captions above the figure instead of inside the plot
+  //   text=0     no captions; the frame is cropped to the figure
+  var params = new URLSearchParams(location.search);
+  var H = parseInt(params.get('H'), 10) || 3, B = 3, M = 2, ITERS = H;
+  var COMBINE = params.get('combine') !== '0';
+  var SPEED = parseFloat(params.get('speed')) || 1.4;
+  var TEXT = params.get('text') === 'top';  // captions above the figure
+  var IN_PLOT = (params.get('text') || 'plot') === 'plot';
+  // The figure spans y = 160..842; cropped frames keep even margins around it (and the header, if shown).
+  window.SIZE = TEXT ? [1920, 900] : IN_PLOT ? [1920, 828] : [1920, 772];
+  if (!TEXT) stage.style.marginTop = IN_PLOT ? '-60px' : '-115px';
+  var rng;
+  function band(h) { return 0.42 * Math.sin(0.95 * h); }  // where the learned models see high value
+  function f(h, y) { return Math.exp(-Math.pow(y - band(h), 2) / (2 * 0.2 * 0.2)); }
+  function score(seq) { var s = 0; for (var h = 1; h <= H; h++) s += f(h, seq[h]); return s / H; }
+  function shown(sc) { return Math.round(sc * 100); }  // the score as the pills display it (x10, one decimal)
+
+  var init = [[0.3, -0.04], [0.02, 0.0], [-0.24, 0.02]].map(function (c) {
+    var seq = [0];
+    for (var h = 1; h <= H; h++) seq.push(c[0] * h + c[1] * h * h);
+    return seq;
+  });
+  function noiseFor(amp) { var e = [0]; for (var h = 1; h <= H; h++) e.push(rng.gauss() * amp); return e; }
+
+  // Run the beam search from a seed. Iteration k keeps the first k-1 actions (nodes 0..k-1) and
+  // branches the rest.
+  function search(seed) {
+    rng = A.rng(seed);
+    init.forEach(function () { noiseFor(0.35); });  // keeps the RNG stream, and so the tree, as approved for H = 4
+    var out = [], beam = init;
+    for (var k = 1; k <= ITERS; k++) {
+      var children = [], noises = [];
+      beam.forEach(function (parent, b) {
+        for (var m = 0; m < M; m++) {
+          var dir = m === 0 ? -1 : 1, sp = 0.2 + 0.05 * rng();
+          var child = parent.map(function (y, h) { return h < k ? y : y + dir * sp * (h - k + 1) + rng.gauss() * 0.02; });
+          children.push({ parent: b, seq: child });
+          noises.push(noiseFor(0.22));
+        }
+      });
+      children.forEach(function (c) { c.score = score(c.seq); });
+      var ranked = children.map(function (c, i) { return i; }).sort(function (a, b) { return children[b].score - children[a].score; });
+      // The last iteration prunes everything but the best candidate.
+      var keep = ranked.slice(0, k === ITERS ? 1 : B);
+      children.forEach(function (c) {  // last node c shares with a survivor; it is deleted after that
+        c.from = Math.max.apply(null, keep.map(function (i) {
+          var s = children[i].seq, j = 0;
+          while (j < H && s[j + 1] === c.seq[j + 1]) j++;
+          return j;
+        }));
+      });
+      out.push({ k: k, parents: beam, children: children, noises: noises, keep: keep, ranked: ranked });
+      beam = ranked.slice(0, B).map(function (i) { return children[i].seq; });
+    }
+    return out;
+  }
+  // Every kept candidate must display a higher score than every pruned one, or the pills read as
+  // contradictory. Take the first seed (from 5, the H = 4 tree) where that holds.
+  function readable(its) {
+    return its.every(function (it) {
+      var n = it.keep.length;
+      return shown(it.children[it.ranked[n - 1]].score) > shown(it.children[it.ranked[n]].score);
+    });
+  }
+  var seed = 5, iters = search(seed);
+  while (!readable(iters) && seed < 200) iters = search(++seed);
+
+  // ------------------------------------------------------------------ timeline
+  var TL = { init: [0.3, 2.5] };  // starts as the cards fade in
+  var phases = [], t = TL.init[1];
+  iters.forEach(function (it, i) {
+    var slow = i === 0;
+    var d = slow ? [3.0, 2.8, 5.2] : [0.9, 1.0, 2.1];
+    phases.push({ it: it, branch: [t, t + d[0]], refine: [t + d[0], t + d[0] + d[1]], score: [t + d[0] + d[1], t + d[0] + d[1] + d[2]], slow: slow });
+    t += d[0] + d[1] + d[2];
+  });
+  if (COMBINE) {
+    TL.pick = [t, t + 4.6];
+    TL.exec = [TL.pick[1], TL.pick[1]];  // no separate step
+    TL.execMark = TL.pick[0] + 1.8;      // when the first action is marked executed
+  } else {
+    TL.pick = [t, t + 2.4];
+    TL.exec = [TL.pick[1], TL.pick[1] + 3.4];
+    TL.execMark = TL.exec[0];
+  }
+  // The timeline is laid out at the original pace and played faster: SPEED overall, and a gentler
+  // FIRST_SPEED through the narrated first iteration so its steps can be followed.
+  var END = TL.exec[1] + 0.8;
+  TL.out = [END - 0.7, END];
+  var FIRST_SPEED = SPEED * 0.75;
+  var slowFrom = phases[0].branch[0], slowTo = phases[0].score[1];
+  var videoFrom = slowFrom / SPEED, videoTo = videoFrom + (slowTo - slowFrom) / FIRST_SPEED;
+  function toTimeline(v) {  // video time -> timeline time
+    if (v <= videoFrom) return v * SPEED;
+    if (v <= videoTo) return slowFrom + (v - videoFrom) * FIRST_SPEED;
+    return slowTo + (v - videoTo) * SPEED;
+  }
+  function toVideo(tl) {  // timeline time -> video time
+    if (tl <= slowFrom) return tl / SPEED;
+    if (tl <= slowTo) return videoFrom + (tl - slowFrom) / FIRST_SPEED;
+    return videoTo + (tl - slowTo) / SPEED;
+  }
+  window.DURATION = toVideo(END);
+  // One still per step for render.js --slides, taken from the narrated first iteration.
+  window.SLIDES = [
+    ['initialize', TL.init[1] - 0.4], ['branch', phases[0].branch[1] - 0.4], ['refine', phases[0].refine[1] - 0.4],
+    ['score', phases[0].score[0] + 2.6], ['prune', phases[0].score[1] - 0.3], ['repeat', phases[2].score[0] + 0.8],
+    ['pick', TL.pick[1] - 0.4]
+  ].concat(COMBINE ? [] : [['execute', TL.exec[1] - 0.6]]).map(function (sl) { return [sl[0], toVideo(sl[1])]; });
+
+  // ------------------------------------------------------------------ layout
+  var root = svg('svg', { width: 1920, height: 900, viewBox: '0 0 1920 900', class: 'abs', style: 'left:0;top:0' }, stage);
+  var defs = svg('defs', {}, root);
+  var glow = svg('filter', { id: 'glow', x: '-30%', y: '-30%', width: '160%', height: '160%' }, defs);
+  svg('feGaussianBlur', { stdDeviation: 8, result: 'b' }, glow);
+  var gm = svg('feMerge', {}, glow);
+  svg('feMergeNode', { in: 'b' }, gm);
+  svg('feMergeNode', { in: 'SourceGraphic' }, gm);
+  function marker(id, fill, size) {
+    var mk = svg('marker', { id: id, viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: size, markerHeight: size, orient: 'auto-start-reverse' }, defs);
+    svg('path', { d: 'M0,0 L10,5 L0,10 z', fill: fill }, mk);
+  }
+  marker('arrg', '#9aa7b4', 6);
+  marker('arrb', HL, 7);
+  marker('arrk', '#000', 6);
+
+  // Narration
+  var kicker = html('div', { id: 'kicker', class: 'abs', text: 'HOW GTP PLANS' }, stage);
+  var narrations = {};
+  function narr(key, num, text) {
+    narrations[key] = html('div', { class: 'abs narr', html: (num ? '<span class="num">' + num + '</span>' : '') + text }, stage);
+  }
+  narr('init', '0', 'Sample action sequence candidates from the diffusion prior');
+  narr('branch', '1', 'Branch: duplicate each sequence, keep its prefix, forward-diffuse the rest');
+  narr('refine', '2', 'Refine: the diffusion prior denoises the suffixes into new proposals');
+  narr('score', '3', 'Score & prune: learned models rank every candidate, the best survive');
+  narr('repeat', '', 'Repeat for future timesteps: the committed prefix grows each round');
+  narr('pick', '', COMBINE ? 'Pick the best sequence and execute its first action' : 'Pick the highest-scoring sequence');
+  narr('exec', '', 'Output the first action of the best sequence, then replan at the next state');
+  if (IN_PLOT) {  // just the "HOW GTP PLANS" header above the figure, larger
+    kicker.style.top = '88px';
+    kicker.style.fontSize = '38px';
+    kicker.style.letterSpacing = '0.12em';
+  }
+  else if (!TEXT) kicker.style.display = 'none';
+  Object.keys(narrations).forEach(function (k) {
+    if (IN_PLOT) narrations[k].classList.add('in-plot');
+    else if (!TEXT) narrations[k].style.display = 'none';
+  });
+
+  // ---- GTP block (left), drawn in the coordinates of a 560x566 card at (60, 190) and scaled in.
+  var schemaCard = html('div', { class: 'abs schema', style: 'left:60px; top:160px; width:522px; height:520px' }, stage);
+  stage.appendChild(root);
+  var sch = svg('g', { class: 'serif', transform: 'translate(60 160) scale(0.93) translate(-60 -190)' }, root);
+  function box(x, y, w, h, lines, size) {
+    var grp = svg('g', {}, sch);
+    var r = svg('rect', { x: x, y: y, width: w, height: h, rx: 22, fill: FILL, stroke: BLUE, 'stroke-width': 3.5 }, grp);
+    lines.forEach(function (l, i) {
+      svg('text', { x: x + w / 2, y: y + h / 2 + (i - (lines.length - 1) / 2) * (size + 2) + size * 0.33, 'text-anchor': 'middle', 'font-size': size, fill: '#000', class: 'serif', text: l }, grp);
+    });
+    return { rect: r };
+  }
+  function serifText(x, y, size, str, extra) {
+    var a = { x: x, y: y, 'text-anchor': 'middle', 'font-size': size, fill: '#000', class: 'serif', text: str };
+    Object.keys(extra || {}).forEach(function (k) { a[k] = extra[k]; });
+    return svg('text', a, sch);
+  }
+  serifText(340, 252, 34, 'Generative Trajectory Planning', { 'font-weight': 700, fill: BLUE });
+  serifText(124, 356, 28, 'State');
+  var sLabel = serifText(124, 414, 28, 's', { 'font-style': 'italic' });
+  svg('tspan', { dy: 7, 'font-size': 19, text: 't' }, sLabel);
+  var inArrow = svg('line', { x1: 80, y1: 380, x2: 224, y2: 380, stroke: '#000', 'stroke-width': 3, 'marker-end': 'url(#arrk)' }, sch);
+  var prior = box(230, 318, 178, 124, ['Diffusion', 'Prior'], 30);
+  var outArrow = svg('line', { x1: 408, y1: 380, x2: 594, y2: 380, stroke: '#000', 'stroke-width': 3, 'marker-end': 'url(#arrk)' }, sch);
+  serifText(502, 334, 26, 'Action');
+  serifText(502, 362, 26, 'Trajectory');
+  var aLabel = serifText(500, 416, 30, 'a', { 'font-weight': 700 });
+  svg('tspan', { dy: 7, 'font-size': 20, 'font-style': 'italic', 'font-weight': 400, text: 't' }, aLabel);
+  var planArrow = svg('line', { x1: 318, y1: 450, x2: 318, y2: 522, stroke: '#000', 'stroke-width': 3, 'marker-end': 'url(#arrk)', 'marker-start': 'url(#arrk)' }, sch);
+  serifText(336, 494, 26, 'Planning', { 'text-anchor': 'start' });
+  var modelsFrame = svg('rect', { x: 84, y: 532, width: 512, height: 196, rx: 6, fill: 'none', stroke: BLUE, 'stroke-width': 3.5, 'stroke-dasharray': '2 6', 'stroke-linecap': 'round' }, sch);
+  var models = [box(102, 572, 134, 116, ['Value', 'Model'], 26), box(250, 552, 180, 156, ['Ensemble', 'Dynamics', 'Model'], 26), box(444, 572, 134, 116, ['Reward', 'Model'], 26)];
+
+  function mix(a, b, u) {
+    var pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+    var r = Math.round(lerp(pa >> 16, pb >> 16, u)), g = Math.round(lerp((pa >> 8) & 255, (pb >> 8) & 255, u)), bl = Math.round(lerp(pa & 255, pb & 255, u));
+    return 'rgb(' + r + ',' + g + ',' + bl + ')';
+  }
+  function lightBox(b, u) {
+    A.attrs(b.rect, { fill: u > 0 ? mix(FILL, '#cfe0ff', u) : FILL, stroke: u > 0 ? mix(BLUE, HL, u) : BLUE, 'stroke-width': 3.5 + 1.5 * u, filter: u > 0.05 ? 'url(#glow)' : 'none' });
+  }
+
+  // ---- planning card (right)
+  var planCard = html('div', { class: 'card', style: 'left:612px; top:160px; width:1248px; height:520px' }, stage);
+  stage.appendChild(root);
+  var plot = svg('g', {}, root);
+
+  // Stage chips with a right-angled "repeat" arrow from Score & prune back to Branch prefix.
+  var chips = [], cx = 640;
+  ['Initialize beam', 'Branch prefix', 'Refine suffix', 'Score & prune'].forEach(function (label, i) {
+    var w = 52 + label.length * 11.6;
+    var r = svg('rect', { x: cx, y: 182, width: w, height: 48, rx: 24, fill: '#fff', stroke: '#c9d2cd', 'stroke-width': 2 }, plot);
+    var c = svg('circle', { cx: cx + 25, cy: 206, r: 14, fill: BLUE }, plot);
+    var n = svg('text', { x: cx + 25, y: 213, 'text-anchor': 'middle', 'font-size': 18, 'font-weight': 700, fill: '#fff', text: String(i) }, plot);
+    var tx = svg('text', { x: cx + 46, y: 214, 'font-size': 21, 'font-weight': 700, fill: C.ink, text: label }, plot);
+    chips.push({ rect: r, circle: c, num: n, text: tx, mid: cx + w / 2 });
+    cx += w + (i < 3 ? 30 : 0);
+    if (i < 3) svg('line', { x1: cx - 26, y1: 206, x2: cx - 6, y2: 206, stroke: '#9aa7b4', 'stroke-width': 2.5, 'marker-end': 'url(#arrg)' }, plot);
+  });
+  var loopG = svg('g', {}, plot);
+  svg('path', { d: 'M' + chips[3].mid + ',232 V266 H' + chips[1].mid + ' V240', fill: 'none', stroke: '#9aa7b4', 'stroke-width': 2.5, 'stroke-dasharray': '6 5', 'stroke-linejoin': 'round', 'marker-end': 'url(#arrg)' }, loopG);
+  var iterText = svg('text', { x: 1836, y: 214, 'text-anchor': 'end', 'font-size': 22, 'font-weight': 700, fill: BLUE }, plot);
+
+  // Plot geometry: states are vertical gridlines, actions are the segments between them.
+  var X0 = 730, X1 = 1540;
+  var X = function (h) { return X0 + (X1 - X0) * h / H; };
+  var all = [];
+  init.forEach(function (s) { all = all.concat(s); });
+  iters.forEach(function (it) { it.children.forEach(function (c) { all = all.concat(c.seq); }); });
+  var yMin = Math.min.apply(null, all), yMax = Math.max.apply(null, all);
+  var DY = IN_PLOT ? 36 : 0;  // room for the in-plot caption
+  var PT = 312 + DY, PB = 590 + 10 * (DY > 0);
+  var Y = function (y) { return PB - (PB - PT) * (y - yMin) / (yMax - yMin); };
+
+  // Value landscape behind the sequences.
+  var LX = 660, LY = 290, LW = 940, LH = 320;
+  var land = html('canvas', { width: LW, height: LH, class: 'abs', style: 'left:' + LX + 'px; top:' + LY + 'px; width:' + LW + 'px; height:' + LH + 'px' }, stage);
+  (function () {
+    var ctx = land.getContext('2d'), img = ctx.createImageData(LW, LH);
+    var pxPerY = (PB - PT) / (yMax - yMin);
+    for (var px = 0; px < LW; px++) {
+      var h = (LX + px - X0) / (X1 - X0) * H;
+      var reach = A.clamp(h / 0.6, 0, 1) * A.clamp((H + 0.4 - h) / 0.4, 0, 1);
+      for (var py = 0; py < LH; py++) {
+        var y = yMin + (PB - (LY + py)) / pxPerY;
+        var v = f(A.clamp(h, 0, H), y) * reach;
+        var o = (py * LW + px) * 4;
+        img.data[o] = 8; img.data[o + 1] = 127; img.data[o + 2] = 122; img.data[o + 3] = Math.round(255 * 0.2 * v);
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  })();
+  stage.appendChild(root);
+  var landLabel = svg('text', { x: X(0) + 30, y: 300, 'font-size': 19, 'font-weight': 700, fill: TEAL, text: 'High value under the learned models' }, plot);
+
+  for (var h = 0; h <= H; h++) {
+    svg('line', { x1: X(h), x2: X(h), y1: 290 + DY, y2: 612, stroke: '#e3e7ea', 'stroke-width': 2 }, plot);
+    var st = svg('text', { x: X(h), y: 640, 'text-anchor': 'middle', 'font-size': 22, fill: C.muted, 'font-style': 'italic' }, plot);
+    st.appendChild(document.createTextNode('s'));
+    svg('tspan', { dy: 6, 'font-size': 15, text: h ? 't+' + h : 't' }, st);
+    if (h < H) {
+      var at = svg('text', { x: (X(h) + X(h + 1)) / 2, y: 620, 'text-anchor': 'middle', 'font-size': 22, fill: BLUE, 'font-style': 'italic', 'font-weight': 700 }, plot);
+      at.appendChild(document.createTextNode('a'));
+      svg('tspan', { dy: 6, 'font-size': 15, 'font-weight': 400, text: h ? 't+' + h : 't' }, at);
+    }
+  }
+
+  // Legend
+  var legend = svg('g', { transform: 'translate(1690 300)' }, plot);
+  [['committed', 1], ['proposed', 0.6], ['branched', 0.25]].forEach(function (l, i) {
+    svg('line', { x1: 0, x2: 34, y1: i * 34, y2: i * 34, stroke: BLUE, 'stroke-opacity': l[1], 'stroke-width': 7, 'stroke-linecap': 'round' }, legend);
+    svg('text', { x: 48, y: i * 34 + 7, 'font-size': 19, fill: C.ink, text: l[0] }, legend);
+  });
+
+  // Candidate slots: one line per action so committed and proposed actions style separately.
+  svg('rect', { x: 640, y: 282 + DY, width: 1000, height: 336 - DY }, svg('clipPath', { id: 'plotClip' }, defs));
+  var bestGlow = svg('path', { fill: 'none', stroke: HL, 'stroke-width': 12, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', filter: 'url(#glow)', 'clip-path': 'url(#plotClip)' }, plot);
+  var curveLayer = svg('g', { 'clip-path': 'url(#plotClip)' }, plot);
+  var slots = [];
+  for (var s = 0; s < B * M; s++) {
+    var g = svg('g', {}, curveLayer);
+    var segs = [];
+    for (var a = 0; a < H; a++) segs.push(svg('line', { 'stroke-width': 7, 'stroke-linecap': 'round' }, g));
+    var rollout = svg('circle', { r: 11, fill: '#fff', stroke: HL, 'stroke-width': 3.5 }, g);
+    var pill = svg('g', {}, plot);
+    var pr = svg('rect', { width: 88, height: 34, rx: 17 }, pill);
+    var pt = svg('text', { 'font-size': 19, 'font-weight': 700, 'text-anchor': 'middle' }, pill);
+    slots.push({ g: g, segs: segs, rollout: rollout, pill: pill, pr: pr, pt: pt });
+  }
+  var rootDot = svg('circle', { cx: X(0), r: 10, fill: BLUE }, plot);
+  var firstMark = svg('g', {}, plot);
+  var firstText = svg('text', { 'text-anchor': 'middle', 'font-size': 22, 'font-weight': 700, fill: HL }, firstMark);
+  firstText.appendChild(document.createTextNode('executed'));
+
+  // ---- principle cards (bottom)
+  var principles = [
+    ['Diffusion Proposal', 'A diffusion prior proposes action sequences.'],
+    ['Iterative Refinement', 'Commit prefixes, re-noise and denoise suffixes.'],
+    ['Model-Based Scoring', 'Learned models score and prune candidates.']
+  ].map(function (p, i) {
+    var el = html('div', { class: 'card principle', style: 'left:' + (60 + i * 610) + 'px; top:712px; width:580px; height:130px' }, stage);
+    html('h3', { html: '<i></i>' + p[0] }, el);
+    html('p', { text: p[1] }, el);
+    return el;
+  });
+
+  // ------------------------------------------------------------------ drawing
+  // k = number of committed actions; o = opacity of the proposed suffix; color overrides it.
+  // cut in [0, 1] is how much of the proposed suffix is drawn, from the branch point (for deletions).
+  // from (default k) is the node after which the sequence is styled by o/color and cut; for a
+  // pruned candidate it is where it leaves every survivor, so its own committed actions go too.
+  function drawSeq(slot, pts, k, o, color, width, cut, from) {
+    var P = pts.map(function (y, h) { return [X(h), Y(y)]; });
+    from = from === undefined ? k : Math.min(from, k);
+    var visible = (cut === undefined ? 1 : cut) * (H - from);
+    slot.segs.forEach(function (seg, a) {
+      var fixed = a < from;  // committed and shared: drawn as committed, never cut
+      var u = fixed ? 1 : A.clamp(visible - (a - from), 0, 1);
+      A.attrs(seg, {
+        x1: P[a][0], y1: P[a][1], x2: lerp(P[a][0], P[a + 1][0], u), y2: lerp(P[a][1], P[a + 1][1], u),
+        visibility: u > 0 ? 'visible' : 'hidden',
+        stroke: fixed ? BLUE : (color || BLUE),
+        'stroke-opacity': fixed ? 1 : o,
+        'stroke-width': width || 7
+      });
+    });
+    slot.g.setAttribute('opacity', 1);
+    return P;
+  }
+  // Stack score pills at the end of the plot without overlap, inside the plot.
+  // While pruned pills are deleted (u: 0 -> 1), the kept ones slide from the full stack to a
+  // stack of their own, so they end up beside their lines.
+  function stack(pills) {
+    var sorted = pills.slice().sort(function (a, b) { return a.y - b.y; }), prev = -1e9, out = new Map();
+    sorted.forEach(function (p) { prev = Math.max(p.y, prev + 38); out.set(p, prev); });
+    var over = sorted.length ? Math.max(0, out.get(sorted[sorted.length - 1]) - 600) : 0;
+    sorted.forEach(function (p) { out.set(p, out.get(p) - over); });
+    return out;
+  }
+  function placePills(pills, u) {
+    var all = stack(pills), kept = u > 0 ? stack(pills.filter(function (p) { return p.keep; })) : null;
+    pills.forEach(function (p) {
+      var w = p.w || 88, y = kept && p.keep ? lerp(all.get(p), kept.get(p), u) : all.get(p);
+      A.attrs(p.slot.pr, { x: X(H) + 24, y: y - 17, width: w });
+      A.attrs(p.slot.pt, { x: X(H) + 24 + w / 2, y: y + 7 });
+    });
+  }
+  function hideSlot(slot) {
+    slot.pr.setAttribute('width', 88);
+    slot.g.setAttribute('opacity', 0);
+    slot.pill.setAttribute('opacity', 0);
+    slot.rollout.setAttribute('opacity', 0);
+  }
+
+  function drawAt(t) {
+    var fadeAll = 1 - prog(t, TL.out[0], TL.out[1]);
+    var cin = eo(prog(t, 0.1, 0.8));
+    A.show(schemaCard, cin * fadeAll, 30);
+    A.show(planCard, cin * fadeAll, 30);
+    A.show(kicker, cin * fadeAll, 10);
+    root.style.opacity = cin * fadeAll;
+
+    var first = phases[0], fast0 = phases[1].branch[0];
+    [['init', TL.init[0], first.branch[0] + 0.2], ['branch', first.branch[0], first.refine[0] + 0.2],
+      ['refine', first.refine[0], first.score[0] + 0.2], ['score', first.score[0], fast0 + 0.2], ['repeat', fast0, TL.pick[0] + 0.2],
+      ['pick', TL.pick[0], COMBINE ? TL.out[1] + 1 : TL.exec[0] + 0.2],
+      COMBINE ? ['exec', 1e9, 1e9 + 1] : ['exec', TL.exec[0], TL.out[1] + 1]].forEach(function (n) {
+      A.show(narrations[n[0]], A.window(t, n[1], n[2], 0.35) * fadeAll, 12);
+    });
+
+    var stageIdx = -1, ph = null, part = null;
+    if (t >= TL.init[0] && t < first.branch[0]) stageIdx = 0;
+    phases.forEach(function (p) {
+      ['branch', 'refine', 'score'].forEach(function (name, j) {
+        if (t >= p[name][0] && t < p[name][1]) { ph = p; part = name; stageIdx = j + 1; }
+      });
+    });
+    var picking = t >= TL.pick[0] && (COMBINE || t < TL.exec[0]);
+    var executing = !COMBINE && t >= TL.exec[0];
+
+    chips.forEach(function (c, i) {
+      var on = i === stageIdx;
+      A.attrs(c.rect, { fill: on ? BLUE : '#fff', stroke: on ? BLUE : '#c9d2cd' });
+      A.attrs(c.text, { fill: on ? '#fff' : C.ink });
+      A.attrs(c.circle, { fill: on ? '#fff' : BLUE });
+      A.attrs(c.num, { fill: on ? BLUE : '#fff' });
+    });
+    var curK = ph ? ph.it.k : (picking || executing ? ITERS : 0);
+    iterText.textContent = t >= TL.init[0] ? 'iteration ' + curK + ' / ' + ITERS : '';
+    loopG.setAttribute('opacity', ph && !ph.slow ? 1 : 0.45);
+
+    // GTP block highlights
+    var hlPrior = stageIdx === 0 || part === 'refine' ? 1 : 0;
+    var hlModels = part === 'score' ? 1 : 0;
+    lightBox(prior, hlPrior);
+    models.forEach(function (m) { lightBox(m, hlModels); });
+    A.attrs(modelsFrame, { stroke: hlModels ? HL : BLUE });
+    A.attrs(planArrow, { stroke: hlModels ? HL : '#000', 'marker-end': hlModels ? 'url(#arrb)' : 'url(#arrk)', 'marker-start': hlModels ? 'url(#arrb)' : 'url(#arrk)' });
+    var stateOn = A.window(t, TL.init[0] - 0.2, TL.init[0] + 1.6, 0.3);
+    A.attrs(inArrow, { stroke: stateOn > 0.1 ? HL : '#000', 'stroke-width': 3 + 2 * stateOn, 'marker-end': stateOn > 0.1 ? 'url(#arrb)' : 'url(#arrk)' });
+    var actOn = t >= TL.execMark ? A.window(t, TL.execMark + 0.3, TL.exec[1] + 1, 0.4) : 0;
+    A.attrs(outArrow, { stroke: actOn > 0.1 ? HL : '#000', 'stroke-width': 3 + 2 * actOn, 'marker-end': actOn > 0.1 ? 'url(#arrb)' : 'url(#arrk)' });
+    A.attrs(aLabel, { fill: actOn > 0.1 ? HL : '#000' });
+
+    // Principle cards
+    var active = stageIdx === 0 ? 0 : (part === 'branch' || part === 'refine') ? 1 : part === 'score' || picking ? 2 : -1;
+    principles.forEach(function (el, i) {
+      var ain = eo(prog(t, 0.4 + 0.12 * i, 1.0 + 0.12 * i));
+      var on = active === i || executing || t < TL.init[0];
+      el.style.opacity = ain * (on ? 1 : 0.42) * fadeAll;
+      el.style.transform = 'translateY(' + (1 - ain) * 30 + 'px)';
+      el.style.borderColor = active === i ? BLUE : C.line;
+      el.style.boxShadow = active === i ? '0 0 0 4px rgba(27,54,136,0.14), 0 16px 40px rgba(27,54,136,0.14)' : '0 10px 30px rgba(16,32,51,0.07)';
+    });
+
+    land.style.display = 'none';
+    landLabel.setAttribute('opacity', 0);
+
+    slots.forEach(hideSlot);
+    bestGlow.setAttribute('opacity', 0);
+    firstMark.setAttribute('opacity', 0);
+    legend.setAttribute('opacity', eo(prog(t, first.branch[0], first.branch[0] + 0.5)));
+    A.attrs(rootDot, { cy: Y(0), opacity: t >= TL.init[0] ? 1 : 0 });
+    if (t < TL.init[0]) return;
+
+    if (stageIdx === 0) {
+      // The initial beam is shown as is, without a denoising animation.
+      init.forEach(function (seq, b) { drawSeq(slots[b], seq, 0, 0.6); });
+      return;
+    }
+
+    if (ph) {
+      var it = ph.it, kk = it.k - 1;  // committed actions this iteration
+      var pills = [];
+      it.children.forEach(function (c, i) {
+        var slot = slots[i], parent = it.parents[c.parent], noise = it.noises[i];
+        var copyIn = i % M === 0 ? 1 : eo(prog(t, ph.branch[0], ph.branch[0] + (ph.slow ? 0.8 : 0.2)));
+        var ramp = function (h) { return Math.min(1, (h - kk) / 2); };
+        if (part === 'branch') {
+          // Copies turn light; then their suffixes are forward-diffused.
+          var nz = eio(prog(t, ph.branch[0] + (ph.slow ? 1.0 : 0.2), ph.branch[1] - (ph.slow ? 0.3 : 0.05)));
+          var pts = parent.map(function (y, h) { return h <= kk ? y : y + noise[h] * nz * ramp(h); });
+          drawSeq(slot, pts, kk, copyIn * lerp(0.6, 0.25, eo(prog(t, ph.branch[0], ph.branch[0] + 0.6))));
+        } else if (part === 'refine') {
+          var rr = eio(prog(t, ph.refine[0] + (ph.slow ? 0.4 : 0.05), ph.refine[1] - (ph.slow ? 0.3 : 0.05)));
+          var pts2 = parent.map(function (y, h) { return h <= kk ? y : lerp(y + noise[h] * ramp(h), c.seq[h], rr); });
+          drawSeq(slot, pts2, kk, lerp(0.25, 0.6, rr));
+        } else {
+          var rank = it.ranked.indexOf(i), good = rank < it.keep.length;
+          var sc = prog(t, ph.score[0] + (ph.slow ? 0.9 : 0.15), ph.score[0] + (ph.slow ? 2.4 : 0.5));
+          // Pruned candidates turn gray, then are deleted: each retracts to where it leaves the
+          // survivors, leaving only them before the next branching.
+          var del = eio(prog(t, ph.score[1] - (ph.slow ? 1.7 : 0.75), ph.score[1] - (ph.slow ? 0.8 : 0.3)));
+          var col = good ? BLUE : mix(BLUE, PRUNED, Math.min(1, sc * 1.5));
+          var o = good ? lerp(0.6, 0.85, sc) : lerp(0.6, 1, Math.min(1, sc * 1.5));
+          drawSeq(slot, c.seq, kk, o, col, 7, good ? 1 : 1 - del, good ? kk : c.from);
+          var ro = prog(t, ph.score[0] + 0.05, ph.score[0] + (ph.slow ? 1.6 : 0.45));
+          if (ro > 0 && ro < 1) {
+            var hp = ro * H, h0 = Math.min(H - 1, Math.floor(hp)), fr = hp - h0;
+            A.attrs(slot.rollout, { cx: lerp(X(h0), X(h0 + 1), fr), cy: Y(lerp(c.seq[h0], c.seq[h0 + 1], fr)), opacity: 1 });
+          }
+          if (sc > 0) {
+            slot.pill.setAttribute('opacity', Math.min(1, sc * 2) * (good ? 1 : 1 - Math.min(1, 2 * del)));  // gone before the kept pills move
+            slot.pr.setAttribute('fill', good ? BLUE : '#e9edf0');
+            slot.pt.setAttribute('fill', good ? '#fff' : '#7a8696');
+            slot.pt.textContent = !good && t >= ph.score[1] - (ph.slow ? 2.3 : 0.95) ? '✕ pruned' : (c.score * 10).toFixed(1);
+            pills.push({ slot: slot, y: Y(c.seq[H]), keep: good });
+          }
+        }
+      });
+      var delAll = prog(t, ph.score[1] - (ph.slow ? 1.7 : 0.75), ph.score[1] - (ph.slow ? 0.8 : 0.3));
+      placePills(pills, part === 'score' ? eio(A.clamp(2 * delAll - 1, 0, 1)) : 0);
+      return;
+    }
+
+    var last = iters[ITERS - 1];
+    if (picking) {
+      // The search is done: the highest-scoring surviving sequence is kept, the others are dropped.
+      var sel = eio(prog(t, TL.pick[0] + 0.5, TL.pick[0] + 1.3));
+      var pickPills = [];
+      last.keep.forEach(function (i, j) {
+        var c = last.children[i], slot = slots[j], best = j === 0;
+        var P = drawSeq(slot, c.seq, ITERS - 1, best ? lerp(0.85, 1, sel) : 0.85, BLUE, best ? 7 + 2 * sel : 7);
+        if (best) {
+          A.attrs(bestGlow, { d: 'M' + P.map(function (p) { return p[0] + ',' + p[1]; }).join(' L'), opacity: sel * 0.55 });
+          if (COMBINE) {  // the selected sequence's first action is executed in the same step
+            var fm = eo(prog(t, TL.execMark, TL.execMark + 0.6));
+            A.attrs(slot.segs[0], { stroke: fm > 0 ? mix(BLUE, HL, fm) : BLUE, 'stroke-width': 9 + 2 * fm });
+            firstMark.setAttribute('opacity', fm);
+            A.attrs(firstText, { x: (P[0][0] + P[1][0]) / 2, y: Math.min(P[0][1], P[1][1]) - 26 });
+          }
+        } else {
+          slot.g.setAttribute('opacity', 1 - sel);  // the others are simply dropped
+        }
+        slot.pill.setAttribute('opacity', best ? 1 : 1 - sel);
+        slot.pr.setAttribute('fill', best && sel > 0 ? mix(BLUE, HL, sel) : BLUE);
+        slot.pt.setAttribute('fill', '#fff');
+        slot.pt.textContent = (best && sel > 0.3 ? '✓ best  ' : '') + (c.score * 10).toFixed(1);
+        pickPills.push({ slot: slot, y: P[H][1], w: best && sel > 0.3 ? 130 : 88 });
+      });
+      placePills(pickPills, 0);
+      return;
+    }
+
+    if (executing) {
+      // GTP outputs the first action of the selected sequence.
+      var P = drawSeq(slots[0], last.children[last.keep[0]].seq, H, 1, BLUE, 9);
+      A.attrs(bestGlow, { d: 'M' + P.map(function (p) { return p[0] + ',' + p[1]; }).join(' L'), opacity: 0.55 });
+      var fm = eo(prog(t, TL.exec[0] + 0.3, TL.exec[0] + 0.9));
+      A.attrs(slots[0].segs[0], { stroke: fm > 0 ? mix(BLUE, HL, fm) : BLUE, 'stroke-width': 9 + 2 * fm });
+      firstMark.setAttribute('opacity', fm);
+      A.attrs(firstText, { x: (P[0][0] + P[1][0]) / 2, y: Math.min(P[0][1], P[1][1]) - 26 });
+    }
+  }
+  window.draw = function (t) { drawAt(toTimeline(t)); };
+  // In-plot captions must sit above the plot card, which was added after them.
+  if (IN_PLOT) Object.keys(narrations).forEach(function (k) { stage.appendChild(narrations[k]); });
+
+  A.start();
+})();
+</script>
+</body>
+</html>

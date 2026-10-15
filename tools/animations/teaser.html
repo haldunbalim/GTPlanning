@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GTP teaser</title>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=block" rel="stylesheet">
+<style>
+  :root {
+    --navy: #102033; --ink: #263548; --muted: #5b6777; --line: #d7ddd9; --paper: #faf9f4;
+    --gtp: #5DBDF3; --gtp-deep: #1f8fd0; --red: #a3403f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--paper); }
+  body { font-family: "Google Sans", Arial, sans-serif; color: var(--navy); }
+  #stage {
+    position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: radial-gradient(ellipse 120% 90% at 50% 0%, #ffffff 0%, var(--paper) 60%, #f2f0e8 100%);
+  }
+  .scene { position: absolute; inset: 0; }
+  .abs { position: absolute; }
+  .kicker {
+    position: absolute; left: 0; right: 0; top: 70px; text-align: center;
+    font-size: 26px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gtp-deep);
+  }
+  .headline {
+    position: absolute; left: 0; right: 0; top: 112px; text-align: center;
+    font-size: 66px; font-weight: 700; letter-spacing: -0.01em; color: var(--navy);
+  }
+  .hl {
+    background-image: linear-gradient(transparent 62%, rgba(93, 189, 243, 0.5) 62%, rgba(93, 189, 243, 0.5) 92%, transparent 92%);
+    background-repeat: no-repeat; background-size: 0% 100%; padding: 0 4px;
+  }
+  .subhead {
+    position: absolute; left: 0; right: 0; top: 204px; text-align: center; font-size: 30px; color: var(--ink);
+  }
+  .caption {
+    position: absolute; left: 0; right: 0; text-align: center; font-size: 24px; color: var(--muted);
+  }
+
+  /* Online learning flywheel */
+  .fw-card {
+    position: absolute; background: #fff; border: 2px solid var(--line); border-radius: 22px;
+    box-shadow: 0 10px 30px rgba(16, 32, 51, 0.08); padding: 24px 28px; transform-origin: 50% 50%;
+  }
+  .fw-card h4 { margin: 0; font-size: 32px; font-weight: 700; color: var(--navy); }
+  .fw-card p { margin: 6px 0 0; font-size: 22px; line-height: 1.3; color: var(--muted); }
+  .fw-chips { display: grid; grid-template-columns: auto auto; justify-content: start; gap: 10px; margin-top: 18px; }
+  .fw-chip {
+    display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 22px; font-weight: 700;
+    color: var(--gtp-deep); background: #eaf5fd; border: 2px solid #cfe8f9; border-radius: 999px; padding: 6px 16px;
+  }
+  .fw-chip svg { flex: none; }
+  .fw-label { position: absolute; width: 300px; font-size: 28px; font-weight: 700; color: var(--gtp-deep); }
+
+  /* Rollout tiles */
+  .tile {
+    position: absolute; background: #fff; border: 1px solid var(--line); border-radius: 22px;
+    padding: 14px; box-shadow: 0 10px 30px rgba(16, 32, 51, 0.08); transform-origin: 50% 60%;
+  }
+  .tile video { display: block; width: 100%; aspect-ratio: 1; border-radius: 12px; background: #fff; object-fit: cover; }
+  .tile.ours { border: 3px solid var(--gtp); box-shadow: 0 0 0 8px rgba(93, 189, 243, 0.18), 0 24px 60px rgba(31, 143, 208, 0.28); }
+  .tile .meta { display: flex; align-items: baseline; justify-content: space-between; padding: 16px 6px 2px; }
+  .tile .name { font-size: 30px; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+  .tile .metric { font-size: 19px; color: var(--muted); padding: 0 6px; }
+  .tile .value { font-size: 50px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .swatch { width: 18px; height: 18px; border-radius: 5px; display: inline-block; }
+  .badge {
+    position: absolute; top: -18px; right: 22px; background: var(--gtp-deep); color: #fff; font-size: 20px; font-weight: 700;
+    padding: 6px 16px; border-radius: 999px; letter-spacing: 0.06em; box-shadow: 0 6px 16px rgba(31, 143, 208, 0.35);
+  }
+
+  /* Cards with plots */
+  .card {
+    position: absolute; background: #fff; border: 1px solid var(--line); border-radius: 22px;
+    box-shadow: 0 10px 30px rgba(16, 32, 51, 0.08);
+  }
+  .card-title { font-size: 34px; font-weight: 700; }
+  .card-sub { font-size: 21px; color: var(--muted); margin-top: 4px; }
+  .pill {
+    position: absolute; left: 14px; bottom: 14px; background: rgba(16, 32, 51, 0.82); color: #fff;
+    font-size: 22px; font-weight: 700; padding: 6px 14px; border-radius: 10px;
+  }
+  svg text { font-family: "Google Sans", Arial, sans-serif; }
+
+  /* Footer */
+  #footer { position: absolute; left: 64px; right: 64px; bottom: 34px; display: flex; justify-content: space-between; align-items: center; font-size: 22px; color: var(--muted); }
+  #footer b { color: var(--navy); }
+  .legend { display: flex; gap: 26px; }
+  .legend span { display: inline-flex; align-items: center; gap: 9px; font-weight: 500; color: var(--ink); }
+  .legend .ours { font-weight: 700; color: var(--navy); }
+
+  /* Title */
+  .t-venue {
+    display: inline-block; font-size: 26px; font-weight: 700; color: var(--red); border: 2px solid rgba(163, 64, 63, 0.35);
+    padding: 6px 18px; border-radius: 999px; letter-spacing: 0.04em;
+  }
+  .t-title { font-size: 104px; font-weight: 700; line-height: 1.02; letter-spacing: -0.02em; margin-top: 30px; }
+  .t-title .accent { color: var(--gtp-deep); }
+  .t-sub { font-size: 34px; color: var(--ink); line-height: 1.35; margin-top: 30px; max-width: 900px; }
+  .t-authors { font-size: 27px; color: var(--muted); margin-top: 34px; }
+  .t-authors sup { font-size: 0.8em; font-weight: 700; vertical-align: 0.35em; line-height: 0; }
+  .t-note { font-size: 21px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="../../static/js/benchmarks-data.js"></script>
+<script src="lib.js"></script>
+<script>
+(function () {
+  'use strict';
+  // The planning animation (method.html) is embedded in full; teaser.html?method=H%3D3%26combine%3D1
+  // passes options to it. Its length and size are only known once it has loaded, so the rest of the
+  // teaser is built after that.
+  var query = new URLSearchParams(location.search).get('method');
+  var frame = A.html('iframe', { src: 'method.html' + (query ? '?' + query : ''), class: 'abs', scrolling: 'no', style: 'left:0; width:1920px; border:0; background:transparent' }, document.getElementById('stage'));
+  // render.js may wait on pageReady before the teaser is built, so expose one promise up front.
+  var resolveReady, ready = new Promise(function (resolve) { resolveReady = resolve; });
+  window.pageReady = ready;
+  frame.addEventListener('load', function () {
+    // Let the teaser's background show through, so the embedded page blends in.
+    A.html('style', { text: 'html, body, #stage { background: transparent !important; } #kicker { display: none !important; }' }, frame.contentDocument.head);  // the teaser draws its own header
+    frame.contentWindow.pageReady.then(function () {
+      build(frame.contentWindow);
+      A.start();  // sets its own window.pageReady; chain it into the one exposed above
+      var started = window.pageReady;
+      window.pageReady = ready;
+      started.then(resolveReady);
+    });
+  });
+
+  function build(method) {
+  var C = A.COLORS, prog = A.prog, eo = A.easeOut, html = A.html, svg = A.svg;
+  var DATA = window.GTP_BENCHMARKS;
+  var ROOT = '../../';
+  var stage = document.getElementById('stage');
+  var ALGOS = DATA.algos;  // sac, dpmd, tdmpc2, gtp
+
+  // Scene boundaries (seconds); each scene overlaps the next by 0.4 s for the crossfade.
+  var T = { title: [0, 4.4], online: [4.0, 13.0] };
+  var METHOD_START = T.online[1] - 0.1, METHOD_LENGTH = method.DURATION;  // starts 0.3 s into its scene
+  T.method = [T.online[1] - 0.4, METHOD_START + METHOD_LENGTH + 0.3];
+  T.loco = [T.method[1] - 0.4, T.method[1] + 7.0];
+  T.manip = [T.loco[1] - 0.4, T.loco[1] + 7.6];
+  T.explore = [T.manip[1] - 0.4, T.manip[1] + 6.8];  // the heatmap clips settle about 6 s in
+  T.outro = [T.explore[1] - 0.4, T.explore[1] + 4.4];
+  window.DURATION = T.outro[1];
+  // One still per scene for render.js --slides: when the scene is fully built, before it fades out.
+  var methodScore = method.SLIDES.filter(function (sl) { return sl[0] === 'score'; })[0][1];
+  window.SLIDES = [['title', 3.85], ['online', T.online[0] + 2.65], ['planning', METHOD_START + methodScore], ['locomotion', T.loco[1] - 0.6],
+    ['manipulation', T.manip[1] - 0.6], ['exploration', T.explore[1] - 0.6], ['outro', T.outro[1] - 0.8]];
+  var drawers = [];
+
+  function env(group, label) {
+    return DATA.groups[group].envs.filter(function (e) { return e.label === label; })[0];
+  }
+  function lastValue(curve) {
+    return curve.mean ? curve.mean[curve.mean.length - 1] : curve.final.mean;
+  }
+  function scene(range) {
+    var el = html('div', { class: 'scene' }, stage);
+    el._range = range;
+    return el;
+  }
+  // Scene-level opacity: crossfade at the edges (the very first and last scenes are not faded at 0 / end).
+  function sceneAlpha(el, t) {
+    var r = el._range;
+    var a = r[0] === 0 ? 1 : prog(t, r[0], r[0] + 0.45);
+    var b = r[1] >= window.DURATION ? 1 - prog(t, r[1] - 0.6, r[1]) : 1 - prog(t, r[1] - 0.45, r[1]);
+    var o = Math.min(a, b);
+    el.style.opacity = o;
+    el.style.visibility = o <= 0.001 ? 'hidden' : 'visible';
+    return o;
+  }
+
+  // subhead (optional) is a one-line takeaway under the headline.
+  function header(sc, kicker, headlineHtml, subhead) {
+    var k = html('div', { class: 'kicker', text: kicker }, sc);
+    var h = html('div', { class: 'headline', html: headlineHtml }, sc);
+    var sub = subhead ? html('div', { class: 'subhead', text: subhead }, sc) : null;
+    var hls = h.querySelectorAll('.hl');
+    return function (t0, t) {
+      A.show(k, eo(prog(t, t0 + 0.15, t0 + 0.6)), 14);
+      A.show(h, eo(prog(t, t0 + 0.25, t0 + 0.8)), 24);
+      if (sub) A.show(sub, eo(prog(t, t0 + 0.5, t0 + 1.05)), 16);
+      for (var i = 0; i < hls.length; i++) {
+        hls[i].style.backgroundSize = (100 * A.easeInOut(prog(t, t0 + 0.9, t0 + 1.5))) + '% 100%';
+      }
+    };
+  }
+
+  // ---------------------------------------------------------------- trajectory fan (title + outro)
+  function makeFan(parent, opts) {
+    var g = svg('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080', class: 'abs', style: 'left:0;top:0' }, parent);
+    var rng = A.rng(opts.seed || 7);
+    var n = 34, steps = 30;
+    var x0 = opts.x0, y0 = opts.y0, len = opts.len;
+    var trajs = [];
+    for (var i = 0; i < n; i++) {
+      var theta = A.lerp(-0.5, 0.5, (i + rng() * 0.8) / n);
+      var curv = rng.gauss() * 0.00045;
+      var wob = rng.gauss() * 10, ph = rng() * 6;
+      var clean = [], noise = [];
+      for (var k = 0; k < steps; k++) {
+        var dx = len * k / (steps - 1);
+        clean.push([x0 + dx * Math.cos(theta * 0.3), y0 + Math.tan(theta) * dx * 0.75 + curv * dx * dx + wob * Math.sin(dx / 110 + ph) * (k / steps)]);
+        var s = Math.sqrt(k / (steps - 1));
+        noise.push([rng.gauss() * 26 * s, rng.gauss() * 70 * s]);
+      }
+      trajs.push({ clean: clean, noise: noise });
+    }
+    // The goal sits just past the end of one trajectory; score is distance to it.
+    var goal = [x0 + len * 0.98, y0 - len * 0.33];
+    trajs.forEach(function (tr) {
+      var e = tr.clean[steps - 1];
+      tr.score = -Math.hypot(e[0] - goal[0], e[1] - goal[1]);
+    });
+    var order = trajs.slice().sort(function (a, b) { return b.score - a.score; });
+    order.forEach(function (tr, r) { tr.rank = r; });
+    // Nudge the winner onto the goal so the highlight lands on it.
+    var best = order[0];
+    var end = best.clean[steps - 1];
+    best.clean = best.clean.map(function (p, k) {
+      var u = k / (steps - 1);
+      return [p[0] + (goal[0] - end[0]) * u * u, p[1] + (goal[1] - end[1]) * u * u];
+    });
+
+    var defs = svg('defs', {}, g);
+    var f = svg('filter', { id: 'glow' + opts.seed, x: '-20%', y: '-20%', width: '140%', height: '140%' }, defs);
+    svg('feGaussianBlur', { stdDeviation: 7, result: 'b' }, f);
+    var m = svg('feMerge', {}, f);
+    svg('feMergeNode', { in: 'b' }, m);
+    svg('feMergeNode', { in: 'SourceGraphic' }, m);
+
+    var goalG = svg('g', {}, g);
+    var ring1 = svg('circle', { cx: goal[0], cy: goal[1], r: 34, fill: 'none', stroke: C.gtpDeep, 'stroke-width': 3, 'stroke-dasharray': '6 7' }, goalG);
+    var ring2 = svg('circle', { cx: goal[0], cy: goal[1], r: 13, fill: C.gtpDeep }, goalG);
+    var paths = trajs.map(function () {
+      return svg('path', { fill: 'none', 'stroke-linecap': 'round' }, g);
+    });
+    var bestPath = svg('path', { fill: 'none', stroke: C.gtpDeep, 'stroke-width': 7, 'stroke-linecap': 'round', filter: 'url(#glow' + opts.seed + ')' }, g);
+    var origin = svg('circle', { cx: x0, cy: y0, r: 14, fill: C.navy }, g);
+    var originHalo = svg('circle', { cx: x0, cy: y0, r: 26, fill: 'none', stroke: C.navy, 'stroke-opacity': 0.25, 'stroke-width': 3 }, g);
+
+    // tDraw: curves appear; tDenoise..+1.6: noise -> clean; tPick: best highlighted.
+    return function (t, tm) {
+      var appear = A.easeOut(prog(t, tm.draw, tm.draw + 0.9));
+      var sigma = 1 - A.easeInOut(prog(t, tm.denoise, tm.denoise + 1.7));
+      var pick = A.easeInOut(prog(t, tm.pick, tm.pick + 0.7));
+      trajs.forEach(function (tr, i) {
+        var pts = tr.clean.map(function (p, k) { return [p[0] + tr.noise[k][0] * sigma, p[1] + tr.noise[k][1] * sigma]; });
+        var good = tr.rank < 6;
+        var col = good ? C.gtp : '#b9c7d3';
+        A.attrs(paths[i], {
+          d: A.spline(A.partial(pts, appear)),
+          stroke: pick > 0 && !good ? '#c4ced7' : C.gtp,
+          'stroke-width': A.lerp(3.2, good ? 3.6 : 2.2, pick),
+          'stroke-opacity': A.lerp(0.75, good ? 0.9 : 0.35, pick) * (opts.alpha || 1)
+        });
+        void col;
+      });
+      A.attrs(bestPath, { d: A.spline(A.partial(best.clean, pick)), 'stroke-opacity': (opts.alpha || 1) * Math.min(1, pick * 3) });
+      var gp = A.easeBack(prog(t, tm.pick + 0.5, tm.pick + 1.0));
+      goalG.setAttribute('opacity', (opts.alpha || 1) * Math.max(0.25 * appear, prog(t, tm.pick + 0.4, tm.pick + 0.7)));
+      ring1.setAttribute('r', 22 + 14 * gp);
+      ring1.setAttribute('transform', 'rotate(' + (t * 30) + ' ' + goal[0] + ' ' + goal[1] + ')');
+      origin.setAttribute('opacity', (opts.alpha || 1) * Math.min(1, appear * 3));
+      originHalo.setAttribute('r', 20 + 10 * Math.abs(Math.sin(t * 2.4)));
+      originHalo.setAttribute('opacity', (opts.alpha || 1) * Math.min(1, appear * 3));
+    };
+  }
+
+  // ---------------------------------------------------------------- scene 0: title
+  (function () {
+    var sc = scene(T.title);
+    var drawFan = makeFan(sc, { x0: 1130, y0: 600, len: 640, seed: 7 });
+    var box = html('div', { class: 'abs', style: 'left:140px; top:250px; width:1000px' }, sc);
+    var venue = html('div', { class: 't-venue', text: 'NeurIPS 2026' }, box);
+    var title = html('div', { class: 't-title', html: 'Generative<br>Trajectory <span class="accent">Planning</span>' }, box);
+    var sub = html('div', { class: 't-sub', style: 'font-size:40px; font-weight:500; color:#102033; white-space:nowrap', text: 'Generative priors meet model-based planning.' }, box);
+    var authors = html('div', { class: 't-authors', html: 'Haldun Balim · Yilun Du<sup>†</sup> · Na Li<sup>†</sup>   —   Harvard University<div class="t-note">† Equal advising</div>' }, box);
+    drawers.push(function (t) {
+      if (!sceneAlpha(sc, t)) return;
+      A.show(venue, eo(prog(t, 0.1, 0.6)), 16);
+      A.show(title, eo(prog(t, 0.2, 0.8)), 30);
+      A.show(sub, eo(prog(t, 0.55, 1.1)), 20);
+      A.show(authors, eo(prog(t, 0.8, 1.3)), 16);
+      drawFan(t, { draw: 0.3, denoise: 1.0, pick: 2.7 });
+    });
+  })();
+
+  // ---------------------------------------------------------------- scene 1: the planning animation
+  // method.html runs inside an iframe and is driven frame by frame, so it stays as crisp as its own render.
+  (function () {
+    // A full-size header like the other slides; the embedded page's own small label is hidden.
+    var sc = scene(T.method);
+    var head = header(sc, 'Generative Trajectory Planning', 'How GTP <span class="hl">plans</span>');
+    drawers.push(function (t) { if (sceneAlpha(sc, t)) head(T.method[0], t); });
+    var h = method.SIZE[1];
+    frame.style.height = h + 'px';
+    frame.style.top = '190px';  // the figure starts about 100px into the frame, below the header
+    frame._range = T.method;
+    drawers.push(function (t) {
+      if (!sceneAlpha(frame, t)) return null;
+      return method.renderAt(A.clamp(t - METHOD_START, 0, METHOD_LENGTH));
+    });
+  })();
+
+  // ---------------------------------------------------------------- rollout tile row (exploration)
+  function tileRow(sc, opts) {
+    var w = opts.width, gap = 44, n = ALGOS.length;
+    var x0 = (1920 - (n * w + (n - 1) * gap)) / 2;
+    var tiles = ALGOS.map(function (algo, i) {
+      var ours = algo.key === 'gtp';
+      var tile = html('div', { class: 'tile' + (ours ? ' ours' : ''), style: 'left:' + (x0 + i * (w + gap)) + 'px; top:' + opts.top + 'px; width:' + w + 'px' }, sc);
+      if (ours) html('div', { class: 'badge', text: 'OURS' }, tile);
+      var src = opts.env.videos[algo.key][opts.env.videos[algo.key].length - 1];
+      A.video(ROOT + src, opts.t0, tile, '', opts.once);
+      var meta = html('div', { class: 'meta' }, tile);
+      var name = html('div', { class: 'name' }, meta);
+      html('span', { class: 'swatch', style: 'background:' + algo.color }, name);
+      name.appendChild(document.createTextNode(ours ? 'GTP' : algo.label));
+      var value = html('div', { class: 'value', style: 'color:' + (ours ? C.gtpDeep : C.navy) }, meta);
+      html('div', { class: 'metric', text: opts.metric }, tile);
+      return { el: tile, ours: ours, final: lastValue(opts.env.curves[algo.key]), value: value, i: i };
+    });
+    return function (t) {
+      var t0 = opts.t0;
+      tiles.forEach(function (tile) {
+        var a = eo(prog(t, t0 + 0.45 + 0.12 * tile.i, t0 + 1.05 + 0.12 * tile.i));
+        var count = A.easeInOut(prog(t, opts.count[0], opts.count[1]));
+        var v = tile.final * count;
+        tile.value.textContent = (opts.decimals ? v.toFixed(opts.decimals) : Math.round(v)) + '%';
+        var dim = A.easeInOut(prog(t, opts.dim, opts.dim + 0.6));
+        A.show(tile.el, a, 40, tile.ours ? 1 + 0.035 * dim : 1 - 0.015 * dim);
+        tile.el.style.filter = tile.ours ? 'none' : 'grayscale(' + (0.75 * dim) + ')';
+        if (!tile.ours) tile.el.style.opacity = a * (1 - 0.42 * dim);
+      });
+    };
+  }
+
+  // ---------------------------------------------------------------- scene 4: exploration
+  (function () {
+    var sc = scene(T.explore), t0 = T.explore[0];
+    var head = header(sc, 'Why it works', '<span class="hl">GTP</span> explores where it matters',
+      'A prior over action sequences enables structured exploration');
+    var row = tileRow(sc, { env: env('exploration', 'PushT-Vision'), width: 372, top: 300, t0: t0, metric: 'Time near the block', count: [t0 + 1.8, t0 + 4.4], dim: t0 + 4.8, decimals: 1, once: true });
+    var cap = html('div', { class: 'caption', style: 'top:900px', text: 'End-effector visits across 2,000 evaluation rollouts at 500k steps, shown in the T-block’s frame.' }, sc);
+    drawers.push(function (t) {
+      if (!sceneAlpha(sc, t)) return;
+      head(t0, t);
+      row(t);
+      A.show(cap, eo(prog(t, t0 + 2.0, t0 + 2.6)), 10);
+    });
+  })();
+
+  // ---------------------------------------------------------------- result scenes: GTP rollouts + final-value bars
+  function barScene(range, group, kicker, headline, caption, envs, opts) {
+    var sc = scene(range), t0 = range[0];
+    var head = header(sc, kicker, headline);
+    var W = 404, gap = 34, x0 = (1920 - (4 * W + 3 * gap)) / 2, top = 262;
+    var cap = html('div', { class: 'caption', style: 'top:928px', text: caption }, sc);
+    var parts = envs.map(function (e, j) {
+      var data = env(group, e[0]);
+      var card = html('div', { class: 'card', style: 'left:' + (x0 + j * (W + gap)) + 'px; top:' + top + 'px; width:' + W + 'px; height:632px' }, sc);
+      var vwrap = html('div', { class: 'abs', style: 'left:16px; top:16px; right:16px; height:300px; border-radius:14px; overflow:hidden' }, card);
+      // e[2], if given, picks the GTP rollout from that checkpoint instead of the last one.
+      var vi = e[2] ? DATA.steps.indexOf(e[2]) : data.videos.gtp.length - 1;
+      var v = A.video(ROOT + data.videos.gtp[vi], t0, vwrap);
+      v.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+      html('div', { class: 'pill', text: e[1] }, vwrap);
+      var BW = W - 32, BH = 290;
+      var g = svg('svg', { width: BW, height: BH, class: 'abs', style: 'left:16px; top:330px' }, card);
+      var value = opts.value || lastValue;  // which number each bar shows
+      var max = opts.max || Math.max.apply(null, ALGOS.map(function (a) { return value(data.curves[a.key], a.key, e[0]); }));
+      var base = BH - 40, topY = 46, bw = 62, bgap = (BW - 4 * bw) / 5;
+      svg('line', { x1: 0, x2: BW, y1: base, y2: base, stroke: '#cfd6d2', 'stroke-width': 2 }, g);
+      var bars = ALGOS.map(function (algo, i) {
+        var ours = algo.key === 'gtp';
+        var x = bgap + i * (bw + bgap);
+        var v = value(data.curves[algo.key], algo.key, e[0]);
+        var rect = svg('rect', { x: x, width: bw, rx: 8, fill: algo.color, opacity: ours ? 1 : 0.75 }, g);
+        var txt = svg('text', { x: x + bw / 2, 'text-anchor': 'middle', 'font-size': ours ? 23 : 19, 'font-weight': ours ? 700 : 500, fill: ours ? C.gtpDeep : C.ink }, g);
+        svg('text', { x: x + bw / 2, y: base + 27, 'text-anchor': 'middle', 'font-size': 17, 'font-weight': ours ? 700 : 500, fill: ours ? C.navy : C.muted, text: ours ? 'GTP' : algo.label }, g);
+        return { rect: rect, txt: txt, h: (base - topY) * v / max, v: v, i: i };
+      });
+      return { card: card, bars: bars, base: base, j: j };
+    });
+    drawers.push(function (t) {
+      if (!sceneAlpha(sc, t)) return;
+      head(t0, t);
+      A.show(cap, eo(prog(t, t0 + 2.0, t0 + 2.6)), 10);
+      parts.forEach(function (p) {
+        A.show(p.card, eo(prog(t, t0 + 0.45 + 0.12 * p.j, t0 + 1.05 + 0.12 * p.j)), 40);
+        p.bars.forEach(function (b) {
+          var u = A.easeOut(prog(t, t0 + 1.6 + 0.1 * p.j + 0.08 * b.i, t0 + 3.2 + 0.1 * p.j + 0.08 * b.i));
+          var h = b.h * u;
+          A.attrs(b.rect, { y: p.base - h, height: Math.max(0, h) });
+          A.attrs(b.txt, { y: p.base - h - 10, opacity: u, text: opts.format(b.v * u) });
+        });
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------- scene: a self-improving online loop
+  // Three stages on a ring (prior & models -> plans -> data), with what happens between them on the
+  // arcs. The parts fade in, the arcs draw, then a dot travels the loop twice and lights each stage;
+  // at "Better prior & models" the four learned components light up together.
+  (function () {
+    var sc = scene(T.online), t0 = T.online[0];
+    var head = header(sc, 'Generative Trajectory Planning', 'A self-improving <span class="hl">online</span> loop');
+    var CX = 960, CY = 655, R = 240;
+    var at = function (deg, r) { var a = deg * Math.PI / 180; return [CX + (r || R) * Math.cos(a), CY + (r || R) * Math.sin(a)]; };
+    var g = svg('svg', { width: 1920, height: 1080, class: 'abs', style: 'left:0;top:0' }, sc);
+    var mk = svg('marker', { id: 'fwArrow', viewBox: '0 0 10 10', refX: 7, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto' }, svg('defs', {}, g));
+    svg('path', { d: 'M0,0 L10,5 L0,10 z', fill: C.gtpDeep }, mk);
+    var track = svg('circle', { cx: CX, cy: CY, r: R, stroke: '#e3e9ee', 'stroke-width': 40, fill: 'none' }, g);
+    var STAGES = [180, 300, 420];  // models, plans, data (clockwise, in degrees)
+    var arcs = STAGES.map(function (a, i) {
+      var b = STAGES[(i + 1) % 3] + (i === 2 ? 360 : 0), pts = [];
+      for (var k = 0; k <= 40; k++) pts.push(at(A.lerp(a + 22, b - 22, k / 40)));
+      var el = svg('path', { fill: 'none', stroke: C.gtpDeep, 'stroke-width': 13, 'stroke-linecap': 'round', 'marker-end': 'url(#fwArrow)' }, g);
+      return { pts: pts, el: el };
+    });
+    var dots = STAGES.map(function (a) { var p = at(a); return svg('circle', { cx: p[0], cy: p[1], r: 13, fill: '#fff', stroke: C.gtpDeep, 'stroke-width': 5 }, g); });
+    var runner = svg('circle', { r: 16, fill: C.gtpDeep, stroke: '#fff', 'stroke-width': 4 }, g);
+    var LABELS = [['plan with GTP', at(240, R + 70), 'right'], ['interact with the environment', at(0, R + 50), 'left'], ['update', at(120, R + 70), 'right']];
+    var labels = LABELS.map(function (l) {
+      return html('div', { class: 'fw-label', style: 'left:' + (l[2] === 'left' ? l[1][0] : l[1][0] - 300) + 'px;top:' + (l[1][1] - 20) + 'px;text-align:' + l[2], text: l[0] }, sc);
+    });
+    var centre = html('div', { class: 'abs', style: 'left:' + (CX - 150) + 'px;top:' + (CY - 62) + 'px;width:300px;text-align:center',
+      html: '<div style="font-size:68px;font-weight:700;color:#1f8fd0;line-height:1">GTP</div><div style="font-size:22px;margin-top:8px;color:#5b6777">online learning<br>from scratch</div>' }, sc);
+    var ICONS = {  // small glyphs for the four learned components
+      prior: '<circle cx="10" cy="32" r="5" fill="#1f8fd0"/><path d="M14 32 C30 30 40 18 56 12"/><path d="M14 32 C30 32 42 30 56 32" opacity="0.6"/><path d="M14 32 C30 34 40 46 56 52" opacity="0.35"/>',
+      dynamics: '<circle cx="12" cy="32" r="7"/><circle cx="52" cy="32" r="7"/><path d="M20 32 H42"/><path d="M36 26 L43 32 L36 38"/><path d="M20 22 C30 16 36 16 44 22" opacity="0.4"/><path d="M20 42 C30 48 36 48 44 42" opacity="0.4"/>',
+      reward: '<path d="M32 8 L38 24 L55 24 L41 34 L46 51 L32 41 L18 51 L23 34 L9 24 L26 24 Z"/>',
+      value: '<path d="M8 54 H58"/><path d="M8 54 V10"/><path d="M12 48 C24 46 30 30 38 24 C44 20 50 16 56 14"/>'
+    };
+    var chipHtml = [['prior', 'Diffusion prior'], ['dynamics', 'Dynamics'], ['reward', 'Reward'], ['value', 'Value']].map(function (c) {
+      return '<span class="fw-chip"><svg width="26" height="26" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">' + ICONS[c[0]] + '</svg>' + c[1] + '</span>';
+    }).join('');
+    var m = at(180), pl = at(300), d = at(60);
+    var cards = [
+      html('div', { class: 'fw-card', style: 'left:' + (m[0] - 32 - 480) + 'px;top:' + (m[1] - 112) + 'px;width:480px;height:224px', html: '<h4>Better prior &amp; models</h4><div class="fw-chips">' + chipHtml + '</div>' }, sc),
+      html('div', { class: 'fw-card', style: 'left:' + (pl[0] + 55) + 'px;top:' + (pl[1] - 150) + 'px;width:430px;height:160px', html: '<h4>Better plans</h4><p>beam search over the prior’s proposals</p>' }, sc),
+      html('div', { class: 'fw-card', style: 'left:' + (d[0] + 40) + 'px;top:' + (d[1] + 20) + 'px;width:430px;height:160px', html: '<h4>Better data</h4><p>structured exploration of the states that matter</p>' }, sc)
+    ];
+    var chips = cards[0].querySelectorAll('.fw-chip');
+    var DOT0 = t0 + 2.7, LAP = 2.7, LAPS = 2;
+
+    drawers.push(function (t) {
+      if (!sceneAlpha(sc, t)) return;
+      head(t0, t);
+      var base = eo(prog(t, t0 + 0.5, t0 + 1.0));
+      track.setAttribute('opacity', base);
+      A.show(centre, eo(prog(t, t0 + 0.6, t0 + 1.1)), 12);
+      dots.forEach(function (dt) { dt.setAttribute('opacity', base); });
+      // Where the travelling dot is: degrees clockwise from the models stage, or null when idle.
+      var lap = (t - DOT0) / LAP, deg = lap > 0 && lap < LAPS ? 180 + 360 * lap : null;
+      var near = function (a) {
+        if (deg === null) return 0;
+        var dd = Math.abs(((deg - a) % 360 + 540) % 360 - 180);
+        return Math.max(0, 1 - dd / 32);
+      };
+      cards.forEach(function (c, i) {
+        var a = eo(prog(t, t0 + 0.7 + 0.15 * i, t0 + 1.3 + 0.15 * i)), lit = near(STAGES[i] % 360);
+        A.show(c, a, 22, 1 + 0.035 * lit);
+        c.style.borderColor = lit > 0.03 ? 'rgba(93,189,243,' + (0.45 + 0.55 * lit) + ')' : '';
+        c.style.boxShadow = '0 0 0 ' + (9 * lit) + 'px rgba(93,189,243,' + (0.22 * lit) + '), 0 10px 30px rgba(16,32,51,0.08)';
+      });
+      // All four components light up together while the dot passes the models stage.
+      var q = near(180);
+      for (var j = 0; j < chips.length; j++) {
+        chips[j].style.background = q > 0.03 ? 'rgba(31,143,208,' + q + ')' : '';
+        chips[j].style.color = q > 0.45 ? '#fff' : '';
+        chips[j].style.borderColor = q > 0.03 ? C.gtpDeep : '';
+      }
+      arcs.forEach(function (arc, i) {
+        var u = A.easeInOut(prog(t, t0 + 1.3 + 0.35 * i, t0 + 1.9 + 0.35 * i));
+        arc.el.setAttribute('d', u > 0 ? A.spline(A.partial(arc.pts, u)) : '');
+        arc.el.setAttribute('opacity', u > 0 ? 1 : 0);
+        A.show(labels[i], eo(prog(t, t0 + 1.5 + 0.35 * i, t0 + 2.0 + 0.35 * i)), 10, 1 + 0.06 * near((STAGES[i] + 60) % 360));
+      });
+      if (deg !== null) {
+        var p = at(deg);
+        A.attrs(runner, { cx: p[0], cy: p[1], opacity: Math.min(1, lap * 10, (LAPS - lap) * 10) });
+      } else runner.setAttribute('opacity', 0);
+    });
+  })();
+
+  // ---------------------------------------------------------------- scene 2: locomotion
+  barScene(T.loco, 'locomotion', 'MuJoCo locomotion', 'Highest return on <span class="hl">locomotion</span> benchmarks',
+    'Mean return after 1M environment steps, 5 seeds, as reported in the paper. Videos: GTP evaluation episodes.',
+    [['HalfCheetah', 'HalfCheetah'], ['Walker2d', 'Walker2d'], ['Ant', 'Ant'], ['Hopper', 'Hopper', 600000]],  // Hopper shows GTP's best checkpoint on the slider
+    { format: function (v) { return (v / 1000).toFixed(1) + 'k'; },
+      // The paper's locomotion table (mean return over 5 seeds after 1M steps; GTP is GTP-H4). The
+      // website plots keep the training curves; only these bars use the table.
+      value: function (c, algo, envLabel) {
+        return {
+          HalfCheetah: { sac: 10515, dpmd: 11591, tdmpc2: 12216, gtp: 13944 },
+          Walker2d: { sac: 4453, dpmd: 4133, tdmpc2: 1622, gtp: 5546 },
+          Ant: { sac: 4229, dpmd: 4092, tdmpc2: 7339, gtp: 7369 },
+          Hopper: { sac: 3351, dpmd: 3147, tdmpc2: 2631, gtp: 3525 }
+        }[envLabel][algo];
+      } });
+
+  // ---------------------------------------------------------------- scene 3: manipulation
+  barScene(T.manip, 'manipulation', 'Long-horizon manipulation', '<span class="hl">GTP</span> matches or beats every baseline',
+    'Final success rate after 1M environment steps, mean over 5 seeds, as reported in the paper. PushT uses image observations.',
+    [['PushT-Vision', 'PushT (pixels)'], ['FetchPush', 'Fetch Push'], ['FetchPick&Place', 'Fetch Pick & Place'], ['FetchSlide', 'Fetch Slide']],
+    { max: 100, format: function (v) { return Math.round(v) + '%'; } });
+
+  // ---------------------------------------------------------------- scene 5: outro
+  (function () {
+    var sc = scene(T.outro), t0 = T.outro[0];
+    var drawFan = makeFan(sc, { x0: 1130, y0: 600, len: 640, seed: 7 });
+    var box = html('div', { class: 'abs', style: 'left:140px; top:280px; width:1000px' }, sc);
+    var title = html('div', { class: 't-title', style: 'margin-top:0', html: 'Generative<br>Trajectory <span class="accent">Planning</span>' }, box);
+    var sub = html('div', { class: 't-sub', html: 'Model-Based Online Decision Making via<br>Generative Trajectory Planning  ·  <b style="color:#a3403f">NeurIPS 2026</b>' }, box);
+    var link = html('div', { class: 't-authors', style: 'color:#102033; font-weight:700; font-size:32px', text: 'github.com/haldunbalim/GTPlanning' }, box);
+    drawers.push(function (t) {
+      if (!sceneAlpha(sc, t)) return;
+      A.show(title, eo(prog(t, t0 + 0.3, t0 + 0.9)), 30);
+      A.show(sub, eo(prog(t, t0 + 0.6, t0 + 1.2)), 20);
+      A.show(link, eo(prog(t, t0 + 0.9, t0 + 1.4)), 16);
+      drawFan(t, { draw: t0 + 0.3, denoise: t0 + 0.9, pick: t0 + 2.4 });
+    });
+  })();
+
+  // ---------------------------------------------------------------- footer (results scenes)
+  (function () {
+    var foot = html('div', { id: 'footer' }, stage);
+    html('div', { html: '<b>Generative Trajectory Planning</b>  ·  NeurIPS 2026' }, foot);
+    var lg = html('div', { class: 'legend' }, foot);
+    ALGOS.forEach(function (a) {
+      var s = html('span', { class: a.key === 'gtp' ? 'ours' : '' }, lg);
+      html('i', { class: 'swatch', style: 'background:' + a.color }, s);
+      s.appendChild(document.createTextNode(a.label));
+    });
+    drawers.push(function (t) {
+      var o = Math.min(prog(t, T.loco[0], T.loco[0] + 0.6), 1 - prog(t, T.explore[1] - 0.6, T.explore[1]));
+      A.show(foot, o, 0);
+    });
+  })();
+
+  window.draw = function (t) {
+    var waits = drawers.map(function (d) { return d(t); }).filter(function (w) { return w && w.then; });
+    return waits.length ? Promise.all(waits) : null;
+  };
+  }
+})();
+</script>
+</body>
+</html>

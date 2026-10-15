@@ -1,0 +1,691 @@
+body {
+  background: #faf9f4;
+  color: #18212f;
+  font-family: "Noto Sans", Arial, sans-serif;
+}
+
+a {
+  color: #087f7a;
+}
+
+a:hover {
+  color: #075f5b;
+}
+
+.navbar {
+  border-bottom: 1px solid #e6e1d6;
+  min-height: 3.5rem;
+}
+
+.navbar-item {
+  color: #314155;
+  font-family: "Google Sans", Arial, sans-serif;
+}
+
+.brand-mark {
+  color: #102033;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.paper-hero {
+  background: #f2f0e8;
+  border-bottom: 1px solid #e1dbc9;
+}
+
+.paper-hero .hero-body {
+  padding-bottom: 4rem;
+  padding-top: 4.5rem;
+}
+
+.venue {
+  color: #a3403f;
+  font-family: "Google Sans", Arial, sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin-bottom: 1rem;
+}
+
+.title.publication-title {
+  color: #102033;
+  font-family: "Google Sans", Arial, sans-serif;
+  font-size: 3.2rem;
+  letter-spacing: 0;
+  line-height: 1.16;
+  margin-bottom: 1.35rem;
+}
+
+.publication-title-line {
+  display: block;
+  white-space: nowrap;
+}
+
+.publication-authors,
+.publication-affiliation {
+  color: #38485c;
+  font-family: "Google Sans", Arial, sans-serif;
+}
+
+.publication-authors {
+  margin-bottom: 0.35rem;
+}
+
+.publication-authors a:hover {
+  text-decoration: underline;
+}
+
+.publication-affiliation {
+  color: #5b6777;
+  margin-bottom: 1.6rem;
+}
+
+.publication-authors sup {
+  color: #5b6777;
+  font-size: 0.7em;
+  margin-left: 0.1em;
+}
+
+.author-note {
+  display: block;
+  font-size: 0.85rem;
+  margin-top: 0.3rem;
+}
+
+.author-block {
+  display: inline-block;
+  margin-left: 0.35rem;
+  margin-right: 0.35rem;
+}
+
+.publication-links {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: center;
+}
+
+.link-block a {
+  border-radius: 6px;
+  font-family: "Google Sans", Arial, sans-serif;
+  font-weight: 600;
+}
+
+.button.is-dark {
+  background: #102033;
+}
+
+.hf-icon {
+  font-size: 1.05em;
+  line-height: 1;
+}
+
+.section {
+  padding-bottom: 3.75rem;
+  padding-top: 3.75rem;
+}
+
+.visual-overview {
+  padding-bottom: 1.4rem;
+  padding-top: 2.6rem;
+}
+
+.abstract-section {
+  padding-top: 1.2rem;
+}
+
+.section-band {
+  background: #f1f4f0;
+  border-bottom: 1px solid #e0e5de;
+  border-top: 1px solid #e0e5de;
+}
+
+.section-title {
+  color: #102033;
+  font-family: "Google Sans", Arial, sans-serif;
+  letter-spacing: 0;
+  margin-bottom: 1.5rem;
+}
+
+.subsection-title {
+  color: #102033;
+  font-family: "Google Sans", Arial, sans-serif;
+  letter-spacing: 0;
+  margin-bottom: 1.25rem;
+  text-align: center;
+}
+
+.paper-copy {
+  color: #263548;
+  font-size: 1.08rem;
+  line-height: 1.78;
+}
+
+.paper-copy p {
+  text-align: justify;
+}
+
+.section-copy {
+  color: #334458;
+  font-size: 1.04rem;
+  line-height: 1.68;
+  margin: 1.65rem auto 0;
+  max-width: 54rem;
+  text-align: left;
+}
+
+.paper-figure {
+  margin: 0;
+}
+
+.paper-figure figcaption {
+  color: #4f5f70;
+  font-family: "Google Sans", Arial, sans-serif;
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.45;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0.85rem;
+  max-width: 58rem;
+  text-align: left;
+}
+
+.teaser-figure {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1120px;
+  width: 100%;
+}
+
+.teaser-video {
+  aspect-ratio: 16 / 9;
+  background: #ffffff;
+  border: 1px solid #d7ddd9;
+  border-radius: 8px;
+  display: block;
+  object-fit: contain;
+  width: 100%;
+}
+
+.method-section {
+  padding-top: 2.5rem;
+}
+
+.method-animation {
+  margin-top: 0.5rem;
+}
+
+.method-animation .teaser-video {
+  aspect-ratio: 1920 / 828;
+}
+
+.results-stack {
+  display: grid;
+  gap: 3.2rem;
+}
+
+.result-group {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.result-figure {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1100px;
+  width: 100%;
+}
+
+.result-image {
+  background: #ffffff;
+  border: 1px solid #d7ddd9;
+  border-radius: 8px;
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.result-group .result-figure figcaption {
+  margin-top: 0.65rem;
+}
+
+.rollout-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.benchmark-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.25rem;
+  justify-content: center;
+}
+
+.benchmark-header .subsection-title {
+  margin-bottom: 0;
+}
+
+.benchmark-explorer {
+  display: grid;
+  gap: 1rem;
+  margin: 0 auto;
+  max-width: 1100px;
+  width: 100%;
+}
+
+.env-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.env-tab {
+  background: #ffffff;
+  border: 1px solid #c9d2cd;
+  border-radius: 999px;
+  color: #314155;
+  cursor: pointer;
+  font-family: "Google Sans", Arial, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.42rem 1.05rem;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.env-tab:hover {
+  border-color: #087f7a;
+  color: #087f7a;
+}
+
+.env-tab.is-active {
+  background: #102033;
+  border-color: #102033;
+  color: #ffffff;
+}
+
+.env-tab:focus-visible,
+.step-slider:focus-visible {
+  outline: 2px solid #087f7a;
+  outline-offset: 2px;
+}
+
+/* Plot and slider on the left, rollout videos on the right. */
+.explorer-body {
+  align-items: center;
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+/* A 2x2 grid of videos is taller than a row of three, so it gets a little less width; benchmarks.js
+   then narrows the grid so its height matches the plot and slider. */
+.explorer-body.has-4 {
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+}
+
+.explorer-body.has-4 .benchmark-videos {
+  justify-self: center;
+  width: 100%;
+}
+
+.explorer-plot {
+  display: grid;
+  gap: 0.9rem;
+}
+
+/* Videos: three in a row, four as 2x2, six as 2x3. */
+.benchmark-videos {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.benchmark-videos.has-3,
+.benchmark-videos.has-6 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.benchmark-videos.has-3 .tile-value,
+.benchmark-videos.has-6 .tile-value {
+  font-size: 0.78rem;
+}
+
+.benchmark-description {
+  color: #334458;
+  font-size: 0.96rem;
+  line-height: 1.55;
+  margin: 0 auto;
+  max-width: 50rem;
+  text-align: left;
+}
+
+.video-placeholder {
+  align-items: center;
+  aspect-ratio: 1 / 1;
+  background: repeating-linear-gradient(135deg, #f4f6f4, #f4f6f4 10px, #eceff0 10px, #eceff0 20px);
+  color: #7a8696;
+  display: flex;
+  font-family: "Google Sans", Arial, sans-serif;
+  font-size: 0.95rem;
+  justify-content: center;
+}
+
+.benchmark-tile.is-ours {
+  border-color: #5dbdf3;
+  box-shadow: 0 0 0 1px #5dbdf3;
+}
+
+.benchmark-tile figcaption {
+  display: grid;
+  gap: 0.15rem;
+  min-height: 0;
+}
+
+.tile-name {
+  align-items: center;
+  color: #102033;
+  display: inline-flex;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.tile-value {
+  color: #5b6777;
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.tile-swatch {
+  border-radius: 3px;
+  display: inline-block;
+  flex: none;
+  height: 0.7rem;
+  width: 0.7rem;
+}
+
+.step-control {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0 0.4rem;
+  width: 100%;
+}
+
+.step-label {
+  color: #334458;
+  font-family: "Google Sans", Arial, sans-serif;
+  font-size: 0.98rem;
+  text-align: center;
+}
+
+.step-label strong {
+  color: #102033;
+  font-variant-numeric: tabular-nums;
+}
+
+.step-slider {
+  accent-color: #087f7a;
+  cursor: pointer;
+  width: 100%;
+}
+
+.step-ticks {
+  color: #5b6777;
+  display: flex;
+  font-size: 0.8rem;
+  justify-content: space-between;
+  padding: 0 0.15rem;
+}
+
+.benchmark-plot {
+  background: #ffffff;
+  border: 1px solid #d7ddd9;
+  border-radius: 8px;
+  padding: 0.9rem 0.9rem 0.75rem;
+  width: 100%;
+}
+
+.benchmark-plot svg {
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.plot-grid {
+  stroke: #e8ece9;
+  stroke-width: 1;
+}
+
+.plot-axis {
+  stroke: #8794a3;
+  stroke-width: 1;
+}
+
+.plot-tick {
+  fill: #5b6777;
+  font-family: "Noto Sans", Arial, sans-serif;
+  font-size: 12px;
+}
+
+.plot-label {
+  fill: #334458;
+  font-family: "Google Sans", Arial, sans-serif;
+  font-size: 13px;
+}
+
+.plot-band {
+  fill-opacity: 0.16;
+  stroke: none;
+}
+
+.plot-line {
+  fill: none;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.plot-line.is-ours {
+  stroke-width: 2.8;
+}
+
+.plot-errorbar {
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.plot-final {
+  fill: #ffffff;
+  stroke-width: 2;
+}
+
+.plot-marker {
+  stroke: #102033;
+  stroke-dasharray: 4 4;
+  stroke-width: 1.2;
+}
+
+.plot-dot {
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+.plot-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.1rem;
+  justify-content: center;
+  margin-top: 0.35rem;
+}
+
+.plot-legend-item {
+  align-items: center;
+  color: #334458;
+  display: inline-flex;
+  font-family: "Google Sans", Arial, sans-serif;
+  font-size: 0.9rem;
+  gap: 0.4rem;
+}
+
+.benchmark-caption {
+  color: #4f5f70;
+  font-family: "Google Sans", Arial, sans-serif;
+  font-size: 0.93rem;
+  line-height: 1.5;
+  margin: 0 auto;
+  max-width: 54rem;
+  text-align: left;
+}
+
+.rollout-tile {
+  background: #ffffff;
+  border: 1px solid #d7ddd9;
+  border-radius: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.rollout-video {
+  aspect-ratio: 1 / 1;
+  background: #ffffff;
+  display: block;
+  object-fit: cover;
+  width: 100%;
+}
+
+.rollout-tile figcaption {
+  font-size: 0.9rem;
+  line-height: 1.25;
+  margin-top: 0;
+  min-height: 3.25rem;
+  padding: 0.58rem 0.55rem 0.68rem;
+}
+
+.horizon-copy {
+  margin-bottom: 1.15rem;
+  margin-top: -0.2rem;
+  max-width: 48rem;
+}
+
+.bibtex {
+  background: #102033;
+  border-radius: 8px;
+  color: #eef5f3;
+  font-size: 0.92rem;
+  overflow-x: auto;
+  padding: 1.2rem 1.35rem;
+}
+
+.bibtex code {
+  color: inherit;
+}
+
+.footer {
+  background: #faf9f4;
+  border-top: 1px solid #e6e1d6;
+  color: #627084;
+  padding: 2rem 1.5rem;
+}
+
+@media screen and (max-width: 900px) {
+  .title.publication-title {
+    font-size: 2.55rem;
+  }
+
+  .publication-title-line {
+    display: inline;
+    white-space: normal;
+  }
+
+  .publication-title-line + .publication-title-line::before {
+    content: " ";
+  }
+
+  /* One column: videos first, then the plot and slider. */
+  .explorer-body,
+  .explorer-body.has-4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .explorer-body .benchmark-videos {
+    order: -1;
+  }
+
+}
+
+@media screen and (max-width: 768px) {
+  .navbar-menu.is-active {
+    display: none;
+  }
+
+  .paper-hero .hero-body {
+    padding-bottom: 2.35rem;
+    padding-top: 2.65rem;
+  }
+
+  .title.publication-title {
+    font-size: 1.95rem;
+    line-height: 1.14;
+  }
+
+  .publication-affiliation {
+    margin-bottom: 1.2rem;
+  }
+
+  .visual-overview {
+    padding-top: 1.35rem;
+  }
+
+  .section {
+    padding-bottom: 2.65rem;
+    padding-top: 2.65rem;
+  }
+
+  .paper-copy p {
+    text-align: left;
+  }
+
+  .results-stack {
+    gap: 1.8rem;
+  }
+}
+
+@media screen and (max-width: 520px) {
+  .title.publication-title {
+    font-size: 1.75rem;
+  }
+
+  .env-tab {
+    font-size: 0.88rem;
+    padding: 0.36rem 0.8rem;
+  }
+
+  .benchmark-plot {
+    padding: 0.5rem 0.4rem 0.6rem;
+  }
+
+  /* The plot scales down with its viewBox, so enlarge its text to stay legible. */
+  .plot-tick {
+    font-size: 20px;
+  }
+
+  .plot-label {
+    font-size: 22px;
+  }
+
+  .plot-ylabel {
+    display: none;
+  }
+
+  .benchmark-videos.has-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rollout-tile figcaption {
+    font-size: 0.82rem;
+    min-height: 3rem;
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
+  }
+}

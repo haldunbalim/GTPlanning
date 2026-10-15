@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="Generative Trajectory Planning is a model-based online decision-making framework that uses a diffusion prior as a proposal distribution over action sequences.">
+  <meta name="keywords" content="Generative Trajectory Planning, GTP, model-based reinforcement learning, diffusion models, trajectory planning, online decision making">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Model-Based Online Decision Making via Generative Trajectory Planning</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/index.css?v=20261014b">
+  <link rel="icon" href="./static/images/favicon.svg">
+
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script defer src="./static/js/benchmarks-data.js?v=20261014a"></script>
+  <script defer src="./static/js/benchmarks.js?v=20261012c"></script>
+</head>
+<body>
+<nav class="navbar is-white" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <a class="navbar-item" href="#top" aria-label="GTP home">
+      <span class="brand-mark">GTP</span>
+    </a>
+  </div>
+  <div class="navbar-menu is-active">
+    <div class="navbar-end">
+      <a class="navbar-item" href="#abstract">Abstract</a>
+      <a class="navbar-item" href="#method">Method</a>
+      <a class="navbar-item" href="#results">Results</a>
+      <a class="navbar-item" href="#bibtex">BibTeX</a>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+  <section class="hero paper-hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop has-text-centered">
+        <p class="venue">NeurIPS 2026</p>
+        <h1 class="title is-1 publication-title">
+          <span class="publication-title-line">Model-Based Online Decision Making via</span>
+          <span class="publication-title-line">Generative Trajectory Planning</span>
+        </h1>
+
+        <div class="is-size-5 publication-authors">
+          <span class="author-block">
+            <a href="https://haldunbalim.github.io">Haldun Balim</a>
+          </span>
+          <span class="author-block">
+            <a href="https://yilundu.github.io">Yilun Du</a><sup>&dagger;</sup>
+          </span>
+          <span class="author-block">
+            <a href="https://nali.seas.harvard.edu">Na Li</a><sup>&dagger;</sup>
+          </span>
+        </div>
+
+        <div class="is-size-5 publication-affiliation">
+          <span>Harvard University</span>
+          <span class="author-note"><sup>&dagger;</sup>Equal advising</span>
+        </div>
+
+        <div class="publication-links">
+          <span class="link-block">
+            <a href="https://arxiv.org/abs/2610.18677" class="external-link button is-normal is-dark" target="_blank" rel="noopener">
+              <span class="icon">
+                <i class="fas fa-file-pdf"></i>
+              </span>
+              <span>Paper</span>
+            </a>
+          </span>
+          <span class="link-block">
+            <a href="https://github.com/haldunbalim/GTPlanning" class="external-link button is-normal is-dark" target="_blank" rel="noopener">
+              <span class="icon">
+                <i class="fab fa-github"></i>
+              </span>
+              <span>Code</span>
+            </a>
+          </span>
+          <span class="link-block">
+            <a href="https://huggingface.co/haldunbalim/GTPlanning" class="external-link button is-normal is-dark" target="_blank" rel="noopener">
+              <span class="icon hf-icon" aria-hidden="true">🤗</span>
+              <span>Models</span>
+            </a>
+          </span>
+          <span class="link-block">
+            <a href="#bibtex" class="external-link button is-normal is-dark">
+              <span class="icon">
+                <i class="fas fa-quote-right"></i>
+              </span>
+              <span>BibTeX</span>
+            </a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section visual-overview" aria-label="GTP method animation">
+    <div class="container is-max-widescreen">
+      <figure class="paper-figure teaser-figure">
+        <video class="teaser-video" autoplay muted loop playsinline preload="metadata" poster="./static/images/gtp-teaser-poster.jpg">
+          <source src="./static/videos/gtp-teaser.mp4" type="video/mp4">
+        </video>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section abstract-section" id="abstract">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 section-title">Abstract</h2>
+      <div class="content paper-copy">
+        <p>
+          Online decision-making faces a tension between efficient inference and long-horizon reasoning. Value-based methods rely on short-horizon bootstrapping that limits the propagation of long-term information, while trajectory optimization methods plan explicitly but must solve a high-dimensional optimization problem at every decision step. We propose Generative Trajectory Planning (GTP), a model-based framework that addresses this tension by learning a generative model as a proposal distribution over action sequences. Instead of optimizing sequences from scratch, GTP samples candidate sequences from a diffusion prior and refines them using learned dynamics, reward, and value models, enabling efficient trajectory-level reasoning. Across continuous control and long-horizon manipulation tasks, GTP matches or exceeds state-of-the-art model-free, diffusion-policy, and model-based baselines, and remains stable in regimes where strong baselines degrade.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section method-section" id="method">
+    <div class="container is-max-widescreen">
+      <h2 class="title is-3 section-title has-text-centered">Generative Trajectory Planning</h2>
+      <figure class="paper-figure teaser-figure method-animation">
+        <video class="teaser-video" autoplay muted loop playsinline preload="metadata" poster="./static/images/gtp-method-poster.jpg">
+          <source src="./static/videos/gtp-method.mp4" type="video/mp4">
+        </video>
+      </figure>
+      <p class="section-copy method-copy">
+        GTP uses the generative model as a structured proposal distribution for planning. An ensemble dynamics model supplies sequence-level uncertainty for exploration, while conservative value updates limit the impact of model bias during learning.
+      </p>
+    </div>
+  </section>
+
+  <section class="section section-band" id="results">
+    <div class="container is-max-widescreen">
+      <h2 class="title is-3 section-title has-text-centered">Benchmark Results</h2>
+      <div class="results-stack">
+        <div class="result-group">
+          <div class="benchmark-header">
+            <h3 class="title is-4 subsection-title">Locomotion</h3>
+            <div class="env-tabs" data-group="locomotion"></div>
+          </div>
+          <div class="benchmark-explorer" data-group="locomotion"></div>
+        </div>
+
+      <div class="result-group">
+        <div class="benchmark-header">
+          <h3 class="title is-4 subsection-title">Manipulation</h3>
+          <div class="env-tabs" data-group="manipulation"></div>
+        </div>
+        <div class="benchmark-explorer" data-group="manipulation"></div>
+      </div>
+
+      <div class="result-group" id="ablations">
+        <div class="benchmark-header">
+          <h3 class="title is-4 subsection-title">Ablations</h3>
+          <div class="env-tabs" data-group="ablation"></div>
+        </div>
+        <p class="section-copy horizon-copy">
+          We ablate GTP's planning, candidate augmentation and dynamics ensemble.
+        </p>
+        <div class="benchmark-explorer" data-group="ablation"></div>
+      </div>
+
+      <div class="result-group horizon-group" id="horizon">
+        <div class="benchmark-header">
+          <h3 class="title is-4 subsection-title">Planning Horizon</h3>
+        </div>
+        <p class="section-copy horizon-copy">
+          GTP trains and plans effectively with longer-horizon models: short horizons lack enough lookahead for reliable FetchSlide behavior, while extended horizons let the planner evaluate delayed consequences and select more stable action sequences.
+        </p>
+        <div class="benchmark-explorer" data-group="horizon"></div>
+      </div>
+
+      <div class="result-group" id="exploration">
+        <div class="benchmark-header">
+          <h3 class="title is-4 subsection-title">Exploration</h3>
+        </div>
+        <p class="section-copy horizon-copy">
+          Where does each method's end-effector go on PushT-Vision? SAC and DPMD rarely reach the T-block, and TD-MPC2 covers the space around it broadly but without focus. GTP concentrates its visits on the block's contour and contact regions, the states that matter for pushing it into place.
+        </p>
+        <div class="benchmark-explorer" data-group="exploration"></div>
+        <p class="benchmark-caption">
+          Each animation shows 2,000 evaluation rollouts from that checkpoint in the T-block's frame: the shading accumulates end-effector visits over the episode, and the dots follow 150 sampled rollouts. The value under each video and the plot give the share of steps the end-effector spends within two pusher radii of the block.
+        </p>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <section class="section section-band" id="bibtex">
+    <div class="container is-max-desktop content">
+      <h2 class="title is-3 section-title">BibTeX</h2>
+      <pre class="bibtex"><code>@inproceedings{balim2026modelbasedonline,
+  title     = {Model-Based Online Decision Making via Generative Trajectory Planning},
+  author    = {Balim, Haldun and Du, Yilun and Li, Na},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2026}
+}</code></pre>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="container is-max-desktop">
+    <div class="content has-text-centered">
+      <p>Website adapted from the Nerfies project page template.</p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
