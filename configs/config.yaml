@@ -1,0 +1,46 @@
+hydra:
+  run:
+    dir: .
+  job_logging:
+    disable_existing_loggers: false
+    root:
+      handlers: []
+  output_subdir: null
+
+  
+defaults:
+  - _self_
+  - algo: ~
+  - env: ~
+
+# misc settings
+seed: 
+use_wandb: False
+wandb_project_name: "GTP"
+wandb_tag: ''
+
+# training settings
+env_name: "HalfCheetah-v4"
+batch_size: 256
+n_train_envs: 5
+n_eval_envs: 20
+total_steps: 1_000_000
+warmup_steps: 10_000
+replay_buffer_size: 1_000_000
+save_every_n_step: 100_000
+save_replay_buffer: True  # with elite bootstrapping each save also holds the cached elites
+compile_timeout_s: 360  # raise for slow-compiling setups, e.g. single-CPU cluster jobs
+log_every_n_step: 1_000
+eval_every_n_step: 10_000
+sample_per_iteration: 1
+update_per_iteration: 1
+record_eval_videos: True
+action_chunk_size: 1
+repeat_action: False
+obs_keys: ["observation", "desired_goal"]
+use_image_observations: false
+image_observation_size: 96
+
+# optimizer settings
+weight_decay: 0.0
+gradient_clip_val: 1.0

@@ -1,0 +1,26 @@
+jax[cuda12]==0.6.0
+flax==0.10.2
+orbax-checkpoint==0.10.3
+wandb==0.19.1
+mujoco-mjx==3.2.6
+mujoco==3.2.6
+gymnasium==1.2.1
+coloredlogs 
+h5py 
+tensorboard 
+tensorboardX
+tqdm
+hydra-core
+matplotlib
+imageio
+moviepy
+pyvirtualdisplay
+opencv-python
+numpyro
+gymnasium-robotics
+huggingface_hub
+# PushT
+pymunk<7
+pygame
+shapely
+scikit-image

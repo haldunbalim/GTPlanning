@@ -1,0 +1,12 @@
+# GTP with elite bootstrapping on PushT-Vision: gtp-vision plus the bootstrapping settings (see
+# gtp-manip-boot.yaml). The update then only reads the first two frames of each sampled segment.
+defaults:
+  - gtp-vision
+  - _self_
+
+n_elites: ${algo.beam_k}
+langevin_steps: 4
+elite_refresh_every: 50
+elite_refresh_batch_size: 256
+
+infer_dtype: bfloat16

@@ -1,0 +1,15 @@
+# GTP with elite bootstrapping on the Fetch manipulation tasks: gtp-manip plus the settings the
+# bootstrapped runs were validated with. The rollout planner's elites (diffusion beam search +
+# langevin refinement, planned in bfloat16) are cached with each transition as action sequences
+# and rescored online in float32 by the update, instead of planning a new pool per batch row.
+defaults:
+  - gtp-manip
+  - _self_
+
+n_elites: ${algo.beam_k}
+langevin_steps: 4
+elite_refresh_every: 50         # env steps between two refresh passes
+elite_refresh_batch_size: 256   # buffer rows whose elites are replanned per pass
+
+infer_dtype: bfloat16           # elite planning; updates stay float32
+chunk_size: 2

@@ -1,0 +1,55 @@
+_target_: gtp.algo.GTPVision
+
+obs_dim: 128
+act_dim:
+image_shape:
+goal_dim: 0
+
+# encoder
+base_channels: 32
+dynamics_loss_weight: 1.0
+reward_loss_weight: 1.0
+alive_loss_weight: 1.0
+
+# networks
+horizon: 8
+unet_dim: 32
+x0_embed_dim: 32
+unet_dim_mults: [1, 2, 4]
+reward_hidden_dims: [256, 256, 256]
+dynamics_hidden_dims: [512, 512, 512, 512]
+n_dynamics: 5
+critics_hidden_dims: [256, 256, 256]
+num_critics: 2
+use_ema_policy: false
+
+# diffusion params
+n_steps: 20
+num_samples: 32
+
+# GTP params
+beam_k: 8
+num_beam: 4
+resample_temp: 1.0
+resample_steps: 5
+
+# update params
+topk_train: 4
+update_noise_typ: langevin
+update_noise_schedule: cosine(0.2, 0.1, 300000)
+horizon_curriculum: linear(1, ${algo.horizon}, 300000)
+target_ess: 0.8
+
+# rollout params
+infer_dtype: float32
+
+# misc
+lr: 3e-4
+tau: 0.005
+gamma: 0.99
+normalize_obs: false
+
+rol_agg: max
+up_agg: median
+
+chunk_size: 1

@@ -1,0 +1,48 @@
+_target_: gtp.algo.GTP
+
+obs_dim: 
+act_dim: 
+goal_dim:
+
+# networks
+horizon: 4
+unet_dim: 64
+x0_embed_dim: 64
+unet_dim_mults: [1, 2]
+reward_hidden_dims: [256, 256, 256]
+dynamics_hidden_dims: [512, 512, 512, 512]
+n_dynamics: 5
+critics_hidden_dims: [256, 256, 256]
+num_critics: 2
+use_ema_policy: false
+
+# diffusion params
+n_steps: 20
+num_samples: 32
+
+# dmppi params
+beam_k: 8
+num_beam: 4
+resample_temp: 1.0
+resample_steps: 5
+
+# update params
+topk_train: 4
+update_noise_typ: langevin
+update_noise_schedule: cosine(0.2, 0.1, 300000)
+horizon_curriculum: linear(1, ${algo.horizon}, 300000)
+target_ess: 0.8
+
+# rollout params
+infer_dtype: float32
+
+# misc
+lr: 3e-4
+tau: 0.005
+gamma: 0.99
+normalize_obs: true
+
+rol_agg: median
+up_agg: min
+
+chunk_size: 1

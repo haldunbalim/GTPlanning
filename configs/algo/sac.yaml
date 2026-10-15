@@ -1,0 +1,14 @@
+_target_: gtp.algo.SAC
+
+obs_dim: 
+act_dim: 
+
+hidden_dims: [256, 256, 256]
+lr: 3e-4
+alpha_lr: 7e-3
+gamma: 0.99
+tau: 0.005
+alpha: 1.0
+target_entropy: null
+auto_alpha: true
+reward_scale: 0.2

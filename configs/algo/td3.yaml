@@ -1,0 +1,14 @@
+_target_: gtp.algo.TD3
+
+obs_dim: 
+act_dim: 
+
+rollout_noise_std: 0.1
+target_noise_std: 0.2
+noise_clip: 0.5
+
+hidden_dims: [256, 256, 256]
+lr: 3e-4
+gamma: 0.99
+tau: 0.005
+reward_scale: 0.2
